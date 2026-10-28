@@ -1,0 +1,23 @@
+# FaceBox - Yêu cầu thư viện
+# Cài đặt: pip install -r requirements.txt
+#
+# Python: 3.15+
+# Cập nhật: 2026-10-23
+#
+# LƯU Ý QUAN TRỌNG:
+# Dự án dùng OpenCV YuNet + SFace (tích hợp sẵn trong opencv-python).
+# KHÔNG cần InsightFace hay ONNX Runtime riêng.
+# Lý do: ONNX Runtime chưa có wheel cho Python 3.15 (tính đến 2026-10).
+
+# Giao diện desktop (Qt6 binding cho Python)
+PySide6>=6.5.0
+
+# Xử lý hình ảnh, webcam, và mô hình AI tích hợp
+# Bao gồm sẵn: cv2.FaceDetectorYN (YuNet) + cv2.FaceRecognizerSF (SFace)
+opencv-python>=4.8.0
+
+# Tính toán số học (array, embedding, cosine distance)
+numpy>=1.24.0
+
+# Tính toán tương đồng (cosine similarity, nếu cần mở rộng)
+scikit-learn>=1.3.0

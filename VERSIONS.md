@@ -4,6 +4,37 @@ Tuân thủ quy tắc Semantic Versioning (MAJOR.MINOR.PATCH).
 
 ---
 
+## [1.3.1] — 2026-11-17
+### Hoàn Thiện Cấu Hình Đóng Gói Độc Lập & Bảo Vệ Dữ Liệu Phát Hành
+- **Cấu hình PyInstaller chuẩn hóa (`FaceBox.spec`)**:
+  - Chuyển `PROJ_DIR` sang sử dụng biến `SPECPATH` chuẩn của PyInstaller, loại bỏ lỗi tìm tài nguyên khi gọi lệnh từ thư mục ngoài.
+  - Bổ sung khai báo đầy đủ toàn bộ hidden imports cho `PySide6`, `cv2`, `numpy`, `sqlite3`, `PIL` và tất cả các submodule trong `ui/`, `services/`, `database/`.
+  - Bổ sung danh sách excludes tối ưu: `scipy`, `pandas`, `unittest`, `IPython`... giúp tinh gọn kích thước bản phát hành.
+- **Chuẩn hóa kết nối Database (`database/db_manager.py`)**:
+  - Loại bỏ hoàn toàn dòng gán đè kết nối tĩnh `conn = sqlite3.connect(DB_PATH)` trong `get_connection()`.
+  - Tích hợp tự động khởi tạo 30 ngăn tủ mặc định sạch (10 size S, 15 size M, 5 size L) khi database được tạo mới lần đầu.
+  - Chuyển toàn bộ câu lệnh log về sử dụng `get_db_path()` động từ `path_service.py`.
+- **Cơ chế phát hành Database sạch (`scripts/init_release_db.py`, `scripts/copy_db_to_dist.ps1`)**:
+  - Không sao chép database thử nghiệm của lập trình viên vào bản phân phối; loại bỏ 100% nguy cơ rò rỉ dữ liệu tài khoản và vector khuôn mặt cá nhân.
+  - Cung cấp script tự động tạo database phát hành sạch với 30 ngăn tủ mặc định sẵn sàng sử dụng.
+- **Portable Launcher & Khởi chạy linh hoạt (`scripts/create_launcher.py`)**:
+  - Loại bỏ các đường dẫn ổ đĩa và thư mục tuyệt đối bị hardcode.
+  - Bổ sung file launcher di động `FaceBox_Launcher.vbs` tự động xác định vị trí thư mục hiện tại qua `WScript.ScriptFullName`, hoạt động ổn định khi người dùng di chuyển thư mục sang ổ đĩa khác.
+  - Ứng dụng hỗ trợ khởi chạy trực tiếp bằng cách nhấn đúp vào `FaceBox.exe` mà không cần launcher.
+- **Bộ cài đặt chuyên nghiệp Inno Setup 6 (`FaceBox_v1.3.1_Setup_x64.exe` ~107.01 MB)**:
+  - Tự động đóng gói và giải nén toàn bộ ứng dụng bằng thuật toán nén `lzma2/ultra64`.
+  - Tích hợp biểu tượng chính thức `assets/FaceBox.ico` cho bộ cài, ứng dụng và shortcut.
+  - Hỗ trợ tạo Desktop Shortcut và Start Menu Shortcut.
+  - Tích hợp trình gỡ cài đặt (Uninstaller), cam kết bảo toàn nguyên vẹn 100% dữ liệu người dùng tại `%LOCALAPPDATA%\FaceBox`.
+- **Gói phân phối Portable ZIP (`FaceBox_v1.3.1_Portable_x64.zip` ~144.29 MB)**:
+  - Đóng gói toàn bộ runtime, mô hình AI ONNX, Qt platform plugins.
+  - Người dùng tải về giải nén và nhấn đúp chạy ngay, không cần cài đặt Python.
+- **Cập nhật tài liệu hướng dẫn (`README.md`)**:
+  - Hướng dẫn toàn diện 12 mục dành cho người dùng và lập trình viên.
+  - Hướng dẫn cài đặt Setup EXE, Portable ZIP, xử lý lỗi quyền camera, SmartScreen và VC++ Redistributable.
+
+---
+
 ## [1.3.0] — 2026-11-14
 ### Đóng Gói Thành Ứng Dụng Windows Độc Lập (PyInstaller onedir)
 - **Tạo `services/path_service.py`**: Xử lý `get_resource_path()`, `get_data_dir()`, `get_db_path()`, `get_log_dir()`, `get_models_dir()`, hỗ trợ cả chế độ dev và chế độ PyInstaller frozen (`sys._MEIPASS`).

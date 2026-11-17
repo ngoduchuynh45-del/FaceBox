@@ -1,12 +1,12 @@
 # CURRENT_STATE.md — Trạng thái hiện tại FaceBox
 
-Cập nhật: 2026-11-14 14:00
+Cập nhật: 2026-11-17 21:26
 
 ## Phiên bản hiện tại
-**v1.2.1** — Tối ưu Typography & Bố cục văn bản (UI Text Layout), sửa triệt để lỗi chữ bị co hẹp/ép tràn
+**v1.3.1** — Hoàn thành Phase 3A: Đóng gói bản quyền Windows x64 độc lập (PyInstaller onedir) & Gói Portable ZIP
 
 ## Trạng thái tổng thể
-✅ **Ứng dụng đã hoàn thiện toàn diện Kiosk Mode & Admin Mode, hiển thị tiếng Việt hoàn hảo trên mọi màn hình**
+✅ **FaceBox v1.3.1 đã được build thành công thành bản Windows độc lập tại `dist/FaceBox/FaceBox.exe` và đóng gói thành file ZIP `dist/FaceBox_v1.3.1_Portable_x64.zip` (144.29 MB)**
 
 ---
 

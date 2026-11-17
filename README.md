@@ -1,205 +1,167 @@
-# FaceBox — Ứng dụng Nhận Diện Khuôn Mặt
+# FaceBox — Industrial Smart Locker & Sinh Trắc Học Khuôn Mặt
 
-**Phiên bản:** 1.0 (Prototype)  
-**Cập nhật:** 2026-10-23
+**Hệ thống tủ thông minh nhận diện khuôn mặt 24/7 phong cách Industrial Smart Locker.**  
+**Phiên bản:** v1.3.1 (Windows x64 Release)  
+**Giấy phép:** Apache 2.0 (OpenCV Model Zoo YuNet & SFace) / LGPLv3 (PySide6)
 
-> ⚠️ **Cảnh báo bảo mật:** Đây là phiên bản prototype nội bộ. Dữ liệu khuôn mặt là thông tin sinh trắc học nhạy cảm. Hệ thống chưa có cơ chế chống giả mạo (liveness detection). **Không sử dụng để kiểm soát an ninh thực tế.**
-
----
-
-## Mục tiêu
-
-FaceBox là ứng dụng desktop Windows cho phép:
-- Mở webcam và hiển thị hình ảnh trực tiếp
-- Đăng ký tài khoản bằng số điện thoại Việt Nam
-- Đăng ký một hoặc nhiều khuôn mặt cho cùng một số điện thoại
-- Nhận diện khuôn mặt real-time và hiển thị số điện thoại liên kết
-- Quản lý và xóa khuôn mặt đã đăng ký
-- Lưu dữ liệu bền vững qua SQLite
+> ⚠️ **Cảnh báo an ninh sinh trắc học:** Phiên bản prototype hiện tại chưa tích hợp liveness detection (phát hiện khuôn mặt sống). Không sử dụng để quản lý tài sản giá trị cao hoặc thay thế hoàn toàn các giải pháp an ninh cấp chuyên dụng.
 
 ---
 
-## Công nghệ
+## 🌟 1. GIỚI THIỆU FACEBOX
 
-| Thành phần | Thư viện | Phiên bản |
-|-----------|---------|-----------|
-| Giao diện desktop | PySide6 | 6.12+ |
-| Webcam + xử lý ảnh | OpenCV | 5.0+ |
-| Tính toán số học | NumPy | 2.5+ |
-| Phát hiện khuôn mặt | YuNet (OpenCV built-in) | - |
-| Nhận diện khuôn mặt | SFace (OpenCV built-in) | - |
-| Cơ sở dữ liệu | SQLite | built-in Python |
-
-**Không cần cài GPU** — chạy hoàn toàn trên CPU.
+FaceBox là giải pháp phần mềm tủ thông minh (Smart Locker) thế hệ mới, kết hợp công nghệ thị giác máy tính nhận diện khuôn mặt sinh trắc học và quản lý tự động hoá quy trình giao nhận bưu kiện. Hệ thống được thiết kế theo phong cách công nghiệp **Industrial Smart Locker** (lấy cảm hứng từ các trạm tủ InPost châu Âu), mang lại trải nghiệm tối ưu, trực quan và hiện đại cho cả người sử dụng lẫn đơn vị quản lý.
 
 ---
 
-## Cấu trúc thư mục
+## ⚡ 2. CÁC CHỨC NĂNG CHÍNH
 
-```
-FaceBox/
-├── main.py                          # Điểm khởi đầu — chạy file này
-├── requirements.txt                 # Thư viện cần cài
-├── README.md                        # File này
-├── AGENTS.md                        # Quy tắc làm việc cho AI Agent
-├── PLAN.md                          # Kế hoạch phát triển 9 giai đoạn
-├── TASKS.md                         # Danh sách công việc
-├── CURRENT_STATE.md                 # Trạng thái hiện tại (quan trọng nhất)
-├── CHANGELOG.md                     # Lịch sử thay đổi
-│
-├── ui/
-│   ├── main_window.py               # Cửa sổ chính, sidebar điều hướng
-│   ├── dashboard_page.py            # Trang tổng quan và thống kê
-│   ├── registration_page.py         # Trang đăng ký khuôn mặt
-│   ├── recognition_page.py          # Trang nhận diện real-time
-│   ├── accounts_page.py             # Trang quản lý tài khoản
-│   ├── styles.py                    # QSS stylesheet (dark theme)
-│   └── widgets.py                   # Widget tái sử dụng
-│
-├── services/
-│   ├── camera_service.py            # Quản lý webcam (chạy trong QThread)
-│   ├── face_recognition_service.py  # YuNet + SFace nhận diện
-│   └── account_service.py           # Validate số điện thoại Việt Nam
-│
-├── database/
-│   ├── db_manager.py                # SQLite CRUD operations
-│   └── schema.sql                   # Định nghĩa bảng (accounts, face_profiles)
-│
-├── models/
-│   ├── download_models.py           # Script tải model AI
-│   ├── face_detection_yunet_2023mar.onnx   # Model phát hiện khuôn mặt
-│   └── face_recognition_sface_2021dec.onnx # Model nhận diện khuôn mặt
-│
-├── data/
-│   └── facebox.db                   # Database SQLite (tạo tự động)
-│
-└── logs/
-    └── facebox_YYYYMMDD.log         # Log ứng dụng
-```
+### Chế độ Kiosk (Dành cho Người gửi & Người nhận hàng)
+- **Giao dịch Gửi hàng:** Đăng ký / Xác thực số điện thoại, quét khuôn mặt nhanh, tự động đề xuất và gán ngăn tủ phù hợp kích thước (Size S, M, L).
+- **Giao dịch Lấy hàng:** Nhận diện khuôn mặt người nhận theo thời gian thực hoặc nhập số điện thoại định danh, tự động mở đúng ngăn tủ chứa kiện hàng.
+- **Giao diện Kiosk Trực quan:** Khung quét khuôn mặt elip tỷ lệ chuẩn công nghiệp, bàn phím số cảm ứng kích thước lớn, phản hồi âm thanh/hình ảnh tức thì.
+
+### Chế độ Quản trị Admin (Dành cho Quản trị viên trạm tủ)
+- **Bảo mật truy cập:** Yêu cầu mã PIN quản trị viên trước khi vào bảng điều khiển.
+- **Tổng quan Dashboard:** Thống kê trực tiếp tình trạng trạm tủ (số ngăn trống, số ngăn đang giữ đồ, tỷ lệ lấp đầy).
+- **Quản lý Ngăn tủ (Lockers):** Theo dõi danh sách 30 ngăn tủ mặc định (10S, 15M, 5L), hỗ trợ thao tác mở khóa khẩn cấp hoặc đổi trạng thái.
+- **Lịch sử Giao dịch (History):** Tra cứu toàn bộ lượt đóng/mở tủ, thời gian và số điện thoại người thực hiện.
+- **Quản lý Tài khoản (Accounts):** Quản lý danh sách người dùng, xem số lượng vector đặc trưng khuôn mặt (embedding) đã nạp.
+- **Cài đặt Hệ thống (Settings):** Cấu hình camera, tinh chỉnh ngưỡng nhận diện khuôn mặt (Cosine Similarity).
 
 ---
 
-## Yêu cầu môi trường
+## 🔬 3. CÔNG NGHỆ SỬ DỤNG
 
-- **Windows** 10/11
-- **Python** 3.10–3.15
-- **RAM** tối thiểu 2GB
-- **Webcam** USB hoặc tích hợp laptop
+| Thành phần | Công nghệ / Thư viện | Ghi chú kỹ thuật |
+|---|---|---|
+| **Ngôn ngữ lập trình** | Python 3.10 – 3.15 | Ngôn ngữ nền tảng xử lý dữ liệu và logic hệ thống |
+| **Giao diện Desktop** | PySide6 (Qt6) | High-DPI, phong cách Industrial Dark/Light, render phần cứng |
+| **Thị giác máy tính** | OpenCV (opencv-python >= 4.8.0) | DirectShow camera capture, xử lý video stream đa luồng QThread |
+| **Phát hiện khuôn mặt** | OpenCV YuNet (`face_detection_yunet`) | Phát hiện khuôn mặt tốc độ cao 30-60 FPS trực tiếp trên CPU |
+| **Nhận diện khuôn mặt** | OpenCV SFace (`face_recognition_sface`) | Trích xuất vector đặc trưng 128 chiều, Cosine Similarity threshold 0.363 |
+| **Định dạng mô hình** | ONNX | Chạy tối ưu hóa suy luận (Inference) không cần card đồ họa GPU |
+| **Cơ sở dữ liệu** | SQLite 3 | Nhẹ, phi tập trung, hỗ trợ lưu trữ vector nhị phân BLOB |
+| **Đóng gói ứng dụng** | PyInstaller 6.x | Đóng gói One-folder (onedir) độc lập Windows x64 |
+| **Bộ cài đặt chuyên nghiệp** | Inno Setup 6 | Trình tạo file setup nén cao cấp LZMA2, quản lý shortcut và uninstaller |
 
 ---
 
-## Cài đặt và khởi chạy
+## 💻 4. YÊU CẦU HỆ THỐNG
 
-### Bước 1: Cài đặt Python
-Tải từ https://python.org — phiên bản 3.10 trở lên
+- **Hệ điều hành:** Windows 10 hoặc Windows 11 (phiên bản 64-bit).
+- **Phần cứng:**
+  - Bộ vi xử lý: Intel Core i3 / AMD Ryzen 3 trở lên (x86_64).
+  - Bộ nhớ RAM: Tối thiểu 4 GB (khuyến nghị 8 GB).
+  - Dung lượng ổ đĩa trống: Tối thiểu 500 MB.
+  - Camera: Webcam USB hoặc Webcam tích hợp laptop hỗ trợ độ phân giải tối thiểu 720p (30fps).
+- **Thư viện hệ thống:** Microsoft Visual C++ 2015-2022 Redistributable (x64).
 
-### Bước 2: Cài thư viện
+---
+
+## 🚀 5. HƯỚNG DẪN CÀI ĐẶT & SỬ DỤNG DÀNH CHO NGƯỜI DÙNG
+
+Người dùng thông thường **không cần cài đặt Python**, không cần cài pip hay gõ bất kỳ dòng lệnh nào.
+
+### Cách 1: Sử dụng Bản Cài Đặt (Khuyến nghị cho Trạm Kiosk / Máy tính để bàn)
+1. Truy cập mục **Releases** trên GitHub: [FaceBox Releases](https://github.com/ngoduchuynh45-del/FaceBox/releases).
+2. Tải file: `FaceBox_v1.3.1_Setup_x64.exe`.
+3. Nhấn đúp vào file cài đặt và làm theo hướng dẫn trên màn hình:
+   - Chọn thư mục cài đặt mong muốn.
+   - Chọn tạo biểu tượng Desktop Shortcut (mặc định tích hợp icon chính thức).
+   - Nhấn **Install** để hoàn tất cài đặt trong vòng vài giây.
+4. Mở ứng dụng từ biểu tượng **FaceBox** trên Desktop hoặc Start Menu.
+
+### Cách 2: Sử dụng Bản Portable (Dành cho USB / Chạy ngay không cần cài đặt)
+1. Tải file: `FaceBox_v1.3.1_Portable_x64.zip` từ mục Releases.
+2. Giải nén file ZIP vào một thư mục trên máy tính (ví dụ: `D:\FaceBox` hoặc `C:\Users\<Tên_Bạn>\Apps\FaceBox`).
+3. Nhấn đúp vào file `FaceBox.exe` (hoặc `FaceBox_Launcher.vbs`) để bắt đầu sử dụng.
+
+---
+
+## 🛠️ 6. XỬ LÝ SỰ CỐ THƯỜNG GẶP (TROUBLESHOOTING)
+
+### A. Cảnh báo Windows Defender SmartScreen ("Windows protected your PC")
+- **Nguyên nhân:** File EXE mới phát hành từ GitHub chưa có chứng thư số doanh nghiệp trả phí (EV Certificate).
+- **Khắc phục:** 
+  1. Nhấp chuột vào dòng chữ gạch chân **"More info"** (Thêm thông tin).
+  2. Nhấn nút **"Run anyway"** (Vẫn chạy).
+
+### B. Lỗi không mở được Camera ("Không thể mở webcam")
+- **Nguyên nhân:** Quyền truy cập camera bị tắt trên Windows, hoặc camera đang bị ứng dụng khác (Zoom, Teams, Zalo, trình duyệt) chiếm dụng.
+- **Khắc phục:**
+  1. Nhấn phím **Windows**, gõ `Camera privacy settings` và nhấn Enter.
+  2. Đảm bảo công tắc **Camera access** (Truy cập camera) đang **BẬT (ON)**.
+  3. Bật mục **Let desktop apps access your camera** (Cho phép ứng dụng màn hình nền truy cập camera).
+  4. Đóng tất cả ứng dụng đang chạy có sử dụng camera và khởi động lại FaceBox.
+
+### C. Lỗi thiếu file DLL hệ thống (`VCRUNTIME140.dll` hoặc `MSVCP140.dll was not found`)
+- **Nguyên nhân:** Máy tính chưa được cài thư viện Microsoft Visual C++ Runtime.
+- **Khắc phục:** Tải và cài đặt gói chính thức trực tiếp từ trang chủ Microsoft:
+  - Tải về: [Microsoft Visual C++ 2015-2022 Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+---
+
+## 📂 7. VỊ TRÍ DỮ LIỆU & NHẬT KÝ HOẠT ĐỘNG (RUNTIME DATA)
+
+Để bảo đảm tính an toàn tuyệt đối và độc lập giữa mã nguồn/bộ cài với dữ liệu người dùng, khi ứng dụng đóng gói hoạt động, toàn bộ dữ liệu sinh trắc học và nhật ký được lưu trữ độc lập tại:
+
+- **Cơ sở dữ liệu SQLite:**
+  ```text
+  %LOCALAPPDATA%\FaceBox\data\facebox.db
+  (Đường dẫn thực tế: C:\Users\<Tên_User>\AppData\Local\FaceBox\data\facebox.db)
+  ```
+- **File nhật ký hoạt động (Log):**
+  ```text
+  %LOCALAPPDATA%\FaceBox\logs\facebox_YYYYMMDD.log
+  ```
+
+---
+
+## 🔄 8. HƯỚNG DẪN CẬP NHẬT & GỠ CÀI ĐẶT
+
+### Cập nhật lên phiên bản mới:
+- Bạn chỉ cần chạy bộ cài đặt mới `FaceBox_vX.X.X_Setup_x64.exe` hoặc giải nén bản Portable mới đè lên thư mục ứng dụng.
+- **Dữ liệu khuôn mặt, danh sách tài khoản và trạng thái ngăn tủ được bảo vệ nguyên vẹn 100%** trong `%LOCALAPPDATA%\FaceBox\data\facebox.db` và không bao giờ bị ghi đè.
+
+### Gỡ cài đặt (Uninstall):
+- Vào **Windows Settings** -> **Apps** -> **Installed Apps** (Ứng dụng đã cài đặt) -> Tìm **FaceBox** -> Chọn **Uninstall**.
+- Hoặc vào Start Menu -> thư mục **FaceBox** -> chọn **Uninstall FaceBox**.
+- Trình gỡ cài đặt sẽ dọn dẹp sạch sẽ các file nhị phân trong thư mục cài đặt, đồng thời **giữ lại an toàn dữ liệu người dùng trong LocalAppData** để phòng trường hợp bạn muốn cài đặt lại sau này.
+
+---
+
+## 👨‍💻 9. DÀNH CHO LẬP TRÌNH VIÊN (DEVELOPMENT & BUILD)
+
+### 1. Chuẩn bị môi trường mã nguồn
 ```powershell
-pip install PySide6 opencv-python numpy
-```
+# Clone mã nguồn
+git clone https://github.com/ngoduchuynh45-del/FaceBox.git
+cd FaceBox
 
-### Bước 3: Tải mô hình AI
-```powershell
-cd "d:\Project Antigravity IDE\Thu muc moi\FaceBox"
-python models\download_models.py
-```
+# Cài đặt thư viện
+pip install -r requirements.txt
 
-Mô hình sẽ được tải vào thư mục `models/` (~40 MB).  
-Nguồn: OpenCV Model Zoo — https://github.com/opencv/opencv_zoo (License: Apache 2.0)
+# Tải 2 mô hình ONNX từ OpenCV Zoo (nếu chưa có)
+python models/download_models.py
 
-### Bước 4: Chạy ứng dụng
-```powershell
-cd "d:\Project Antigravity IDE\Thu muc moi\FaceBox"
+# Khởi chạy ứng dụng ở chế độ phát triển
 python main.py
 ```
 
----
+### 2. Đóng gói bản Portable bằng PyInstaller
+```powershell
+pyinstaller --clean --noconfirm FaceBox.spec
+```
 
-## Cách sử dụng
-
-### Mở webcam
-1. Vào **Tổng Quan**
-2. Nhấn nút **"📷 Mở Camera"**
-3. Webcam sẽ bật (có thể mất 2-3 giây)
-
-### Đăng ký tài khoản và khuôn mặt
-1. Vào **Đăng Ký Khuôn Mặt** (sau khi mở camera)
-2. Nhập số điện thoại (VD: 0912345678) → nhấn **Xác nhận**
-3. Nhìn thẳng vào camera → nhấn **Bắt đầu quét**
-4. Hệ thống tự động chụp 10 mẫu (~3 giây)
-5. Nhấn **Lưu khuôn mặt**
-
-### Thêm khuôn mặt vào tài khoản đã có
-- Nhập **cùng số điện thoại** đã đăng ký
-- Hệ thống sẽ nhận ra tài khoản đã tồn tại và cho phép thêm khuôn mặt mới
-
-### Nhận diện khuôn mặt
-1. Vào **Nhận Diện Trực Tiếp**
-2. Đứng trước camera
-3. Hệ thống tự động nhận diện và hiển thị số điện thoại
-
-### Quản lý tài khoản
-- Vào **Quản Lý Tài Khoản**
-- Tìm kiếm theo số điện thoại
-- Chọn tài khoản → xem danh sách khuôn mặt
-- Xóa từng khuôn mặt hoặc xóa toàn bộ
+### 3. Đóng gói bộ cài đặt bằng Inno Setup
+```powershell
+iscc installer\FaceBox_Setup.iss
+```
+File cài đặt hoàn chỉnh sẽ được tạo tại `dist\FaceBox_v1.3.1_Setup_x64.exe`.
 
 ---
 
-## Vị trí lưu dữ liệu
-
-| Loại dữ liệu | Vị trí |
-|-------------|--------|
-| Database (embedding khuôn mặt) | `data/facebox.db` |
-| Log ứng dụng | `logs/facebox_YYYYMMDD.log` |
-| Mô hình AI | `models/*.onnx` |
-
-### Sao lưu dữ liệu
-Chỉ cần sao chép file `data/facebox.db`.  
-**Lưu ý:** File này chứa dữ liệu sinh trắc học — bảo quản cẩn thận.
-
----
-
-## Xử lý lỗi thường gặp
-
-| Lỗi | Nguyên nhân | Cách khắc phục |
-|-----|-------------|----------------|
-| "Không thể mở webcam" | Webcam đang bị app khác dùng | Tắt Skype, Teams, Zoom... rồi thử lại |
-| "Không tìm thấy model" | Chưa tải model AI | Chạy `python models/download_models.py` |
-| "Không phát hiện khuôn mặt" | Ánh sáng yếu hoặc góc lệch | Đảm bảo đủ ánh sáng, nhìn thẳng camera |
-| "Khuôn mặt quá nhỏ" | Đứng quá xa camera | Đứng gần hơn (~50cm) |
-| App không khởi động | Thiếu PySide6 | `pip install PySide6` |
-| Nhận diện sai người | Ngưỡng quá thấp | Tăng ngưỡng trong trang Nhận Diện |
-
----
-
-## Ngưỡng nhận diện
-
-Mô hình SFace dùng **cosine distance** (khoảng cách cosine):
-- **0.0** = giống hệt nhau
-- **1.0** = hoàn toàn khác nhau
-- **Ngưỡng mặc định: 0.363** (khuyến nghị từ tài liệu OpenCV)
-
-Điều chỉnh trong trang **Nhận Diện Trực Tiếp**:
-- Giảm ngưỡng → nghiêm ngặt hơn (ít nhận nhầm, có thể bỏ sót)
-- Tăng ngưỡng → dễ nhận hơn (có thể nhận nhầm người)
-
----
-
-## Giới hạn hiện tại (Phiên bản 1.0)
-
-- Chưa có chống giả mạo (liveness detection)
-- Chưa mã hóa database sinh trắc học
-- Chưa kết nối mạng hoặc server
-- Chưa có ứng dụng điện thoại
-- Chưa điều khiển khóa tủ hàng
-
----
-
-## Chức năng sẽ bổ sung (xem PLAN.md)
-
-- Giai đoạn 4: Quản lý kiện hàng và lịch sử mở tủ
-- Giai đoạn 5: Backend và đồng bộ đám mây
-- Giai đoạn 6: App điện thoại
-- Giai đoạn 7-8: Thiết bị nhúng + khóa điện tử
-- Giai đoạn 9: Bảo mật và triển khai thực tế
+## 📄 10. THÔNG TIN PHIÊN BẢN v1.3.1
+- **Phát hành:** Tháng 11/2026.
+- **Thay đổi chính:** Hoàn thiện cơ chế phát hành độc lập Windows x64 (Portable ZIP & Inno Setup Installer), bảo vệ dữ liệu người dùng tại LocalAppData, nạp mô hình AI an toàn chống lỗi Unicode path, chuẩn hóa giao diện Kiosk & Admin 7 tính năng.

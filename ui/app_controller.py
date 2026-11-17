@@ -8,6 +8,7 @@ Bộ điều phối chế độ hoạt động chính của FaceBox:
 - Quản lý tập trung CameraService và FaceRecognitionService, phân phối frame camera.
 """
 
+import os
 import sys
 import logging
 import numpy as np
@@ -37,6 +38,13 @@ class AppController(QMainWindow):
         self.setWindowTitle("FaceBox — Hệ Thống Tủ Thông Minh & Định Danh Sinh Trắc Học")
         self.setMinimumSize(1100, 720)
         self.resize(1240, 780)
+
+        # Đặt Window Icon chính thức cho cửa sổ ứng dụng
+        from PySide6.QtGui import QIcon
+        from services.path_service import get_resource_path
+        icon_ico = get_resource_path(os.path.join("assets", "FaceBox.ico"))
+        if icon_ico.exists():
+            self.setWindowIcon(QIcon(str(icon_ico)))
 
         # 1. Khởi tạo các services cốt lõi
         self.camera_service = CameraService()

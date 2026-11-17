@@ -65,12 +65,12 @@ def get_resource_path(relative_path: str) -> Path:
 def get_data_dir() -> Path:
     """
     Trả về thư mục lưu trữ dữ liệu người dùng (có quyền GHI).
-    Quy tắc an toàn:
+    Quy tắc an toàn và bảo toàn dữ liệu:
     1. Nếu có biến môi trường FACEBOX_DATA_DIR: dùng biến đó.
-    2. Khi chạy Dev: dùng thư mục 'data/' ở gốc dự án.
-    3. Khi chạy Frozen:
-       - Thử kiểm tra thư mục 'data/' cạnh file exe xem có quyền ghi không (chế độ portable).
-       - Nếu không có quyền ghi (ví dụ cài trong Program Files): dùng %LOCALAPPDATA%/FaceBox/data/.
+    2. Khi chạy Dev (mã nguồn): dùng thư mục 'data/' ở gốc dự án.
+    3. Khi chạy Frozen (bản đóng gói): MẶC ĐỊNH LUÔN DÙNG %LOCALAPPDATA%/FaceBox/data.
+       Tuyệt đối không lưu vào thư mục cạnh EXE để tránh tạo database thứ hai và
+       bảo vệ dữ liệu không bị xóa/ghi đè khi người dùng nâng cấp hoặc gỡ cài đặt.
     """
     env_dir = os.environ.get("FACEBOX_DATA_DIR")
     if env_dir:
@@ -83,50 +83,37 @@ def get_data_dir() -> Path:
         p.mkdir(parents=True, exist_ok=True)
         return p.resolve()
 
-    # Khi chạy frozen exe
-    portable_data = get_app_dir() / "data"
-    try:
-        portable_data.mkdir(parents=True, exist_ok=True)
-        # Thử ghi file test quyền
-        test_file = portable_data / ".write_test"
-        test_file.write_text("ok", encoding="utf-8")
-        test_file.unlink()
-        return portable_data.resolve()
-    except Exception:
-        # Fallback sang LocalAppData
-        local_app = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "FaceBox" / "data"
-        local_app.mkdir(parents=True, exist_ok=True)
-        return local_app.resolve()
+    # Khi chạy frozen exe: Luôn dùng %LOCALAPPDATA%/FaceBox/data
+    local_app_base = os.environ.get("LOCALAPPDATA")
+    if local_app_base:
+        p = Path(local_app_base) / "FaceBox" / "data"
+    else:
+        p = Path.home() / "AppData" / "Local" / "FaceBox" / "data"
+
+    p.mkdir(parents=True, exist_ok=True)
+    return p.resolve()
 
 
 def get_db_path() -> str:
     """
     Trả về đường dẫn file SQLite database 'facebox.db'.
-    Nếu file database chưa tồn tại ở vị trí đích nhưng có file database mẫu
-    tại thư mục cài đặt, tự động sao chép sang để bảo toàn dữ liệu.
+    Chỉ trả về đường dẫn đích trong thư mục dữ liệu người dùng (get_data_dir()).
+    Không sao chép database mẫu từ thư mục cài đặt; nếu chưa có, init_database()
+    sẽ tự động khởi tạo database sạch từ schema.sql tại đúng vị trí này.
     """
     data_dir = get_data_dir()
     target_db = data_dir / "facebox.db"
-
-    if not target_db.exists():
-        # Kiểm tra file db mẫu ở dev root hoặc cạnh exe
-        source_candidates = [
-            _DEV_PROJECT_ROOT / "data" / "facebox.db",
-            get_app_dir() / "data" / "facebox.db",
-        ]
-        for src in source_candidates:
-            if src.exists() and src.resolve() != target_db.resolve():
-                try:
-                    shutil.copy2(src, target_db)
-                    break
-                except Exception:
-                    pass
-
     return str(target_db.resolve())
 
 
 def get_log_dir() -> Path:
-    """Trả về thư mục lưu log file (có quyền ghi)."""
+    """
+    Trả về thư mục lưu log file (có quyền GHI).
+    Quy tắc:
+    1. Nếu có biến môi trường FACEBOX_LOG_DIR: dùng biến đó.
+    2. Khi chạy Dev: dùng thư mục 'logs/' ở gốc dự án.
+    3. Khi chạy Frozen: MẶC ĐỊNH LUÔN DÙNG %LOCALAPPDATA%/FaceBox/logs.
+    """
     env_dir = os.environ.get("FACEBOX_LOG_DIR")
     if env_dir:
         p = Path(env_dir)
@@ -138,18 +125,15 @@ def get_log_dir() -> Path:
         p.mkdir(parents=True, exist_ok=True)
         return p.resolve()
 
-    # Thử cạnh file exe
-    portable_logs = get_app_dir() / "logs"
-    try:
-        portable_logs.mkdir(parents=True, exist_ok=True)
-        test_file = portable_logs / ".write_test"
-        test_file.write_text("ok", encoding="utf-8")
-        test_file.unlink()
-        return portable_logs.resolve()
-    except Exception:
-        local_app = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "FaceBox" / "logs"
-        local_app.mkdir(parents=True, exist_ok=True)
-        return local_app.resolve()
+    # Khi chạy frozen exe: Luôn dùng %LOCALAPPDATA%/FaceBox/logs
+    local_app_base = os.environ.get("LOCALAPPDATA")
+    if local_app_base:
+        p = Path(local_app_base) / "FaceBox" / "logs"
+    else:
+        p = Path.home() / "AppData" / "Local" / "FaceBox" / "logs"
+
+    p.mkdir(parents=True, exist_ok=True)
+    return p.resolve()
 
 
 def get_models_dir() -> Path:

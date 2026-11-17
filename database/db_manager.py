@@ -18,12 +18,15 @@ def get_db_path() -> str:
     return _resolve_db_path()
 
 
-# Tương thích ngược biến DB_PATH
+# Tương thích ngược biến DB_PATH (gọi động để luôn lấy đường dẫn mới nhất)
+def _get_current_db_path() -> str:
+    return get_db_path()
+
 DB_PATH = get_db_path()
 
 
 def init_database() -> None:
-    """Khởi tạo database, tạo bảng nếu chưa có."""
+    """Khởi tạo database, tạo bảng nếu chưa có và nạp dữ liệu ngăn tủ mặc định."""
     db_file = get_db_path()
     os.makedirs(os.path.dirname(db_file), exist_ok=True)
     conn = get_connection()
@@ -32,8 +35,30 @@ def init_database() -> None:
         with open(schema_path, 'r', encoding='utf-8') as f:
             schema_sql = f.read()
         conn.executescript(schema_sql)
+
+        # Kiểm tra và tự động khởi tạo danh sách ngăn tủ mặc định nếu bảng lockers còn trống
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM lockers")
+        locker_count = cur.fetchone()[0]
+        if locker_count == 0:
+            default_lockers = []
+            # 10 ngăn size S (1-10)
+            for i in range(1, 11):
+                default_lockers.append((i, 'S', 'empty'))
+            # 15 ngăn size M (11-25)
+            for i in range(11, 26):
+                default_lockers.append((i, 'M', 'empty'))
+            # 5 ngăn size L (26-30)
+            for i in range(26, 31):
+                default_lockers.append((i, 'L', 'empty'))
+            cur.executemany(
+                "INSERT INTO lockers (locker_number, size, status) VALUES (?, ?, ?)",
+                default_lockers
+            )
+            logger.info("Đã khởi tạo 30 ngăn tủ mặc định sạch (10S, 15M, 5L)")
+
         conn.commit()
-        logger.info(f"Database khởi tạo tại: {db_file}")
+        logger.info(f"Database khởi tạo thành công tại: {db_file}")
     except Exception as e:
         logger.error(f"Lỗi khởi tạo database: {e}")
         raise
@@ -42,8 +67,8 @@ def init_database() -> None:
 
 
 def get_connection() -> sqlite3.Connection:
+    """Tạo kết nối SQLite an toàn với foreign_keys bật, luôn dùng get_db_path() động."""
     conn = sqlite3.connect(get_db_path())
-    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -154,7 +179,7 @@ def save_face_profile(account_id: int, embedding: np.ndarray, label: str = None)
         conn.commit()
         profile_id = cur.lastrowid
         logger.info(f"[DB] Đã lưu profile id={profile_id} cho account_id={account_id}, nhãn='{label}', "
-                    f"shape={emb.shape}, bytes={len(embedding_bytes)}, DB={DB_PATH}")
+                    f"shape={emb.shape}, bytes={len(embedding_bytes)}, DB={get_db_path()}")
         return True, f"Đã lưu {label}", profile_id
     except Exception as e:
         logger.error(f"[DB] Lỗi lưu khuôn mặt cho account_id={account_id}: {e}")
@@ -198,7 +223,7 @@ def get_all_face_embeddings() -> List[dict]:
             except Exception as decode_err:
                 logger.error(f"[DB] Lỗi giải mã embedding profile_id={d.get('profile_id')}: {decode_err}")
 
-        logger.info(f"[DB] Tải thành công {len(result)}/{len(rows)} embedding từ DB: {DB_PATH}")
+        logger.info(f"[DB] Tải thành công {len(result)}/{len(rows)} embedding từ DB: {get_db_path()}")
         return result
     except Exception as e:
         logger.error(f"[DB] Lỗi truy vấn bảng face_profiles: {e}")

@@ -102,7 +102,7 @@ def main():
     """Điểm khởi động chính của ứng dụng FaceBox."""
     logger = setup_logging()
     logger.info("=" * 60)
-    logger.info(f"FaceBox v1.2.1 — Khởi chạy (Frozen={is_frozen()})")
+    logger.info(f"FaceBox v1.3.1 — Khởi chạy (Frozen={is_frozen()})")
     logger.info(f"Python: {sys.version}")
     logger.info(f"App dir: {_BASE_DIR}")
     logger.info("=" * 60)
@@ -110,10 +110,18 @@ def main():
     # Đặt biến môi trường cho Qt
     os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 
+    # Đăng ký AppUserModelID riêng biệt trên Windows để hiển thị đúng Icon trên Taskbar
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FaceBox.IndustrialSmartLocker.1.3.1")
+        except Exception:
+            pass
+
     app = QApplication(sys.argv)
     app.setApplicationName("FaceBox")
     app.setApplicationDisplayName("FaceBox — Industrial Smart Locker")
-    app.setApplicationVersion("1.2.1")
+    app.setApplicationVersion("1.3.1")
     app.setOrganizationName("FaceBox")
 
     setup_exception_hook(logger)

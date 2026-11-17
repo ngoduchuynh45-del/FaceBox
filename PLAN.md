@@ -1,6 +1,6 @@
 # PLAN.md — Kế hoạch phát triển FaceBox
 
-Cập nhật: 2026-10-23
+Cập nhật: 2026-11-13
 
 ## Tổng quan
 
@@ -11,7 +11,7 @@ Phát triển theo 9 giai đoạn từ prototype đến triển khai thực tế
 
 ## Giai đoạn 1: Webcam, đăng ký và nhận diện cơ bản
 
-**Trạng thái:** `IN_PROGRESS`
+**Trạng thái:** `DONE`
 
 **Mục tiêu:** Ứng dụng desktop chạy được, mở webcam, đăng ký và nhận diện khuôn mặt.
 
@@ -72,16 +72,17 @@ Phát triển theo 9 giai đoạn từ prototype đến triển khai thực tế
 
 ## Giai đoạn 4: Quản lý kiện hàng và lịch sử
 
-**Trạng thái:** `TODO`
+**Trạng thái:** `DONE`
 
 **Mục tiêu:** Thêm tính năng quản lý tủ hàng.
 
 **Công việc:**
-- [ ] Bảng Packages (kiện hàng)
-- [ ] Bảng OpenHistory (lịch sử mở tủ)
-- [ ] Trang quản lý kiện hàng
-- [ ] Trang lịch sử mở tủ
-- [ ] Báo cáo theo ngày/tuần
+- [x] Bảng Lockers (ngăn tủ)
+- [x] Bảng Packages (kiện hàng)
+- [x] Bảng OpenHistory (lịch sử mở tủ)
+- [x] Trang quản lý ngăn tủ (LockerPage)
+- [x] Trang lịch sử mở tủ (HistoryPage)
+- [x] Tích hợp gửi/nhận hàng Kiosk với tủ và kiện hàng thực tế
 
 ---
 

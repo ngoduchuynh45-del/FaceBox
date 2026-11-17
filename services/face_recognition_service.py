@@ -20,16 +20,17 @@ import cv2
 import numpy as np
 import os
 import logging
+from pathlib import Path
 from typing import Optional, List, Tuple, Dict
 
 logger = logging.getLogger(__name__)
 
-# ---- Đường dẫn model ----
-_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_MODELS_DIR = os.path.join(_THIS_DIR, '..', 'models')
+# ---- Đường dẫn model (quản lý qua path_service linh hoạt cho dev & pyinstaller) ----
+from services.path_service import get_models_dir
 
-YUNET_PATH = os.path.join(_MODELS_DIR, 'face_detection_yunet_2023mar.onnx')
-SFACE_PATH = os.path.join(_MODELS_DIR, 'face_recognition_sface_2021dec.onnx')
+_MODELS_DIR = get_models_dir()
+YUNET_PATH = (_MODELS_DIR / 'face_detection_yunet_2023mar.onnx').resolve()
+SFACE_PATH = (_MODELS_DIR / 'face_recognition_sface_2021dec.onnx').resolve()
 
 # ---- Ngưỡng nhận diện ----
 # SFace dùng Cosine Similarity (cv2.FaceRecognizerSF.FR_COSINE):
@@ -222,30 +223,64 @@ class FaceRecognitionService:
             (success, message)
         """
         try:
-            # Kiểm tra file model
-            if not os.path.exists(YUNET_PATH):
-                msg = (f"Không tìm thấy model YuNet:\n{YUNET_PATH}\n\n"
+            yunet_str = str(YUNET_PATH)
+            sface_str = str(SFACE_PATH)
+
+            # Kiểm tra tồn tại, file thực tế và kích thước
+            yunet_exists = os.path.exists(yunet_str) and os.path.isfile(yunet_str)
+            yunet_size = os.path.getsize(yunet_str) if yunet_exists else 0
+
+            sface_exists = os.path.exists(sface_str) and os.path.isfile(sface_str)
+            sface_size = os.path.getsize(sface_str) if sface_exists else 0
+
+            logger.info(f"[Model Check] YuNet path: {yunet_str} | exists={yunet_exists} | isfile={os.path.isfile(yunet_str) if yunet_exists else False} | size={yunet_size} bytes")
+            logger.info(f"[Model Check] SFace path: {sface_str} | exists={sface_exists} | isfile={os.path.isfile(sface_str) if sface_exists else False} | size={sface_size} bytes")
+
+            if not yunet_exists or yunet_size == 0:
+                msg = (f"Không tìm thấy model YuNet hợp lệ:\n{yunet_str}\n\n"
                        "Chạy: python models/download_models.py")
                 self._load_error = msg
+                logger.error(msg)
                 return False, msg
 
-            if not os.path.exists(SFACE_PATH):
-                msg = (f"Không tìm thấy model SFace:\n{SFACE_PATH}\n\n"
+            if not sface_exists or sface_size == 0:
+                msg = (f"Không tìm thấy model SFace hợp lệ:\n{sface_str}\n\n"
                        "Chạy: python models/download_models.py")
                 self._load_error = msg
+                logger.error(msg)
                 return False, msg
 
-            logger.info(f"Đang tải YuNet detector từ: {YUNET_PATH}")
-            self._detector = cv2.FaceDetectorYN.create(
-                YUNET_PATH, "",
-                self._input_size,
-                score_threshold=0.6,
-                nms_threshold=0.3,
-                top_k=5
-            )
+            # Khởi tạo YuNet detector (ưu tiên đường dẫn, fallback buffer nếu đường dẫn chứa ký tự Unicode tiếng Việt)
+            logger.info(f"Đang tải YuNet detector từ: {yunet_str}")
+            try:
+                self._detector = cv2.FaceDetectorYN.create(
+                    yunet_str, "",
+                    self._input_size,
+                    score_threshold=0.6,
+                    nms_threshold=0.3,
+                    top_k=5
+                )
+            except cv2.error as e:
+                logger.warning(f"OpenCV không đọc được file trực tiếp ({e}). Chuyển sang nạp qua binary buffer...")
+                with open(yunet_str, "rb") as f:
+                    buf_yunet = bytearray(f.read())
+                self._detector = cv2.FaceDetectorYN.create(
+                    "onnx", buf_yunet, bytearray(),
+                    self._input_size,
+                    score_threshold=0.6,
+                    nms_threshold=0.3,
+                    top_k=5
+                )
 
-            logger.info(f"Đang tải SFace recognizer từ: {SFACE_PATH}")
-            self._recognizer = cv2.FaceRecognizerSF.create(SFACE_PATH, "")
+            # Khởi tạo SFace recognizer (ưu tiên đường dẫn, fallback buffer nếu đường dẫn chứa ký tự Unicode tiếng Việt)
+            logger.info(f"Đang tải SFace recognizer từ: {sface_str}")
+            try:
+                self._recognizer = cv2.FaceRecognizerSF.create(sface_str, "")
+            except cv2.error as e:
+                logger.warning(f"OpenCV không đọc được file trực tiếp ({e}). Chuyển sang nạp qua binary buffer...")
+                with open(sface_str, "rb") as f:
+                    buf_sface = bytearray(f.read())
+                self._recognizer = cv2.FaceRecognizerSF.create("onnx", buf_sface, bytearray())
 
             self._is_ready = True
             logger.info("Mô hình YuNet + SFace đã sẵn sàng hoạt động")
@@ -552,6 +587,34 @@ class RecognitionConfirmer:
     def __init__(self, required_frames: int = CONFIRMATION_FRAMES):
         self.required_frames = required_frames
         self._counter: Dict[str, int] = {}
+        self._last_candidate: Optional[str] = None
+
+    def reset(self):
+        """Đặt lại toàn bộ bộ đếm xác nhận."""
+        self._counter.clear()
+        self._last_candidate = None
+
+    def add_result(self, phone_number: Optional[str]) -> Tuple[Optional[str], bool]:
+        """
+        Ghi nhận kết quả nhận diện từ một frame.
+        Trả về (phone_number, is_confirmed).
+        """
+        if not phone_number:
+            # Giảm dần counter nếu không có kết quả hợp lệ
+            if self._last_candidate and self._last_candidate in self._counter:
+                self._counter[self._last_candidate] = max(0, self._counter[self._last_candidate] - 1)
+            return None, False
+
+        self._last_candidate = phone_number
+        self._counter[phone_number] = self._counter.get(phone_number, 0) + 1
+
+        # Giảm counter cho các ứng viên khác nếu có
+        for other in list(self._counter.keys()):
+            if other != phone_number:
+                self._counter[other] = max(0, self._counter[other] - 1)
+
+        is_confirmed = (self._counter[phone_number] >= self.required_frames)
+        return phone_number, is_confirmed
 
     def update(self, results: List[dict]) -> List[dict]:
         """

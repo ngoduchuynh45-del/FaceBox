@@ -16,7 +16,8 @@ logger = logging.getLogger("facebox.ui.registration")
 
 from ui.widgets import (EllipseCameraView, SectionTitle,
                          FACE_STATE_NONE, FACE_STATE_TOO_FAR, FACE_STATE_TOO_CLOSE,
-                         FACE_STATE_OFFCENTER, FACE_STATE_READY)
+                         FACE_STATE_OFFCENTER, FACE_STATE_READY, FACE_STATE_SUCCESS)
+from ui import theme
 from services.account_service import validate_phone, get_or_create_account
 from database import db_manager
 
@@ -68,11 +69,11 @@ class RegistrationPage(QWidget):
 
         # Tiêu đề
         title = QLabel("Đăng Ký Khuôn Mặt")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #e2e8f0;")
+        title.setStyleSheet("font-size: 20px; font-weight: 800; letter-spacing: 0.5px;")
         right_panel.addWidget(title)
 
         sub = QLabel("Nhập số điện thoại để tạo hoặc chọn tài khoản")
-        sub.setStyleSheet("color: #64748b; font-size: 12px; margin-bottom: 8px;")
+        sub.setStyleSheet(f"color: {theme.colors().text_muted}; font-size: 13px; margin-bottom: 6px;")
         right_panel.addWidget(sub)
 
         # --- Bước 1: Tài khoản ---
@@ -81,8 +82,8 @@ class RegistrationPage(QWidget):
         step1_layout = QVBoxLayout(step1_frame)
         step1_layout.setSpacing(8)
 
-        s1_title = QLabel("Bước 1: Tài khoản")
-        s1_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #94a3b8;")
+        s1_title = QLabel("BƯỚC 1: TÀI KHOẢN")
+        s1_title.setStyleSheet("font-size: 12px; font-weight: 800; letter-spacing: 0.8px; color: #FFD500;")
         step1_layout.addWidget(s1_title)
 
         self.phone_input = QLineEdit()
@@ -119,8 +120,8 @@ class RegistrationPage(QWidget):
         step2_layout = QVBoxLayout(self.step2_frame)
         step2_layout.setSpacing(8)
 
-        s2_title = QLabel("Bước 2: Quét khuôn mặt")
-        s2_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #94a3b8;")
+        s2_title = QLabel("BƯỚC 2: QUÉT KHUÔN MẶT")
+        s2_title.setStyleSheet("font-size: 12px; font-weight: 800; letter-spacing: 0.8px; color: #FFD500;")
         step2_layout.addWidget(s2_title)
 
         # Nhãn tùy chọn
@@ -133,13 +134,13 @@ class RegistrationPage(QWidget):
 
         # Thanh tiến trình quét
         self.progress_label = QLabel("Chưa bắt đầu quét")
-        self.progress_label.setStyleSheet("color: #64748b; font-size: 12px;")
+        self.progress_label.setStyleSheet(f"color: {theme.colors().text_secondary}; font-size: 12px; font-weight: 600;")
         step2_layout.addWidget(self.progress_label)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, _TARGET_SAMPLES)
         self.progress_bar.setValue(0)
-        self.progress_bar.setFixedHeight(6)
+        self.progress_bar.setFixedHeight(10)
         step2_layout.addWidget(self.progress_bar)
 
         # Nút hành động
@@ -168,16 +169,25 @@ class RegistrationPage(QWidget):
 
         layout.addLayout(right_panel, 2)
 
+    def showEvent(self, event):
+        """Khi trang đăng ký hiển thị, đảm bảo camera đã được kích hoạt."""
+        super().showEvent(event)
+        if not self.camera_service.is_running():
+            try:
+                self.camera_service.start()
+            except Exception as e:
+                logger.warning(f"Tự động mở camera thất bại: {e}")
+
     def _show_status(self, label: QLabel, message: str, status_type: str = "info"):
-        """Hiển thị thông báo trạng thái với màu sắc tương ứng."""
+        """Hiển thị thông báo trạng thái theo phong cách Industrial Smart Locker."""
         colors = {
-            "success": ("color: #34d399; background: #064e3b;", "✅ "),
-            "error":   ("color: #f87171; background: #7f1d1d;", "❌ "),
-            "warning": ("color: #fbbf24; background: #451a03;", "⚠️ "),
-            "info":    ("color: #94a3b8; background: #1e2635;", "ℹ️ "),
+            "success": ("color: #16A36A; background: #0E3322; border: 1px solid #16A36A;", "✅ "),
+            "error":   ("color: #D94848; background: #3D1818; border: 1px solid #D94848;", "❌ "),
+            "warning": ("color: #FFD500; background: #3A3005; border: 1px solid #FFD500;", "⚠️ "),
+            "info":    ("color: #CCCCCC; background: #252525; border: 1px solid #3A3A3A;", "ℹ️ "),
         }
         style, icon = colors.get(status_type, colors["info"])
-        label.setStyleSheet(f"QLabel {{ {style} border-radius: 6px; padding: 8px 12px; }}")
+        label.setStyleSheet(f"QLabel {{ {style} border-radius: 2px; padding: 10px 14px; font-weight: 600; font-size: 13px; }}")
         label.setText(icon + message)
         label.setVisible(True)
 
@@ -186,8 +196,14 @@ class RegistrationPage(QWidget):
         phone = self.phone_input.text().strip()
 
         if not self.camera_service.is_running():
+            try:
+                self.camera_service.start()
+            except Exception:
+                pass
+
+        if not self.camera_service.is_running():
             self._show_status(self.account_status_label,
-                "Vui lòng mở camera trước (Trang Tổng Quan → Mở Camera)", "warning")
+                "Không thể mở webcam. Vui lòng kiểm tra kết nối thiết bị.", "error")
             return
 
         if not self.face_service.is_ready():
@@ -216,6 +232,12 @@ class RegistrationPage(QWidget):
 
     def _start_capture(self):
         """Bắt đầu thu thập các mẫu khuôn mặt."""
+        if not self.camera_service.is_running():
+            try:
+                self.camera_service.start()
+            except Exception:
+                pass
+
         if not self.camera_service.is_running():
             self._show_status(self.scan_status_label, "Camera chưa được bật", "error")
             return
@@ -248,45 +270,22 @@ class RegistrationPage(QWidget):
 
         # Chọn khuôn mặt lớn nhất
         face_row = max(faces, key=lambda f: f[2] * f[3])
-        fx, fy, fw, fh = int(face_row[0]), int(face_row[1]), int(face_row[2]), int(face_row[3])
         fh_frame, fw_frame = frame.shape[:2]
 
-        # Tính toán vị trí và diện tích so với elip
-        face_cx = (fx + fw / 2) / fw_frame
-        face_cy = (fy + fh / 2) / fh_frame
-        face_area_frac = (fw * fh) / (fw_frame * fh_frame)
-
-        rx_norm = 0.29   # 0.58 / 2
-        ry_norm = 0.35   # 0.70 / 2
-        dx = (face_cx - 0.5) / rx_norm
-        dy = (face_cy - 0.5) / ry_norm
-        in_ellipse = (dx * dx + dy * dy) <= 1.35
+        # Đánh giá vị trí khuôn mặt so với khung elip chuẩn hóa
+        state, state_msg = self.camera_view.evaluate_face_geometry(face_row, fw_frame, fh_frame)
 
         # Tiết lưu log chẩn đoán (~1s/lần)
         now = time.time()
         should_diag_log = (now - self._last_diag_time >= 1.0)
 
         # Kiểm tra cự ly và căn chỉnh
-        if face_area_frac < 0.05:
-            self.camera_view.set_face_state(FACE_STATE_TOO_FAR)
-            self.camera_view.set_custom_label("Đưa khuôn mặt lại gần hơn")
+        if state != FACE_STATE_READY:
+            self.camera_view.set_face_state(state)
+            self.camera_view.set_custom_label(state_msg)
             if should_diag_log:
                 self._last_diag_time = now
-                logger.info(f"[Scan] Khuôn mặt quá xa ({face_area_frac:.1%} < 5%)")
-            return
-        elif face_area_frac > 0.55:
-            self.camera_view.set_face_state(FACE_STATE_TOO_CLOSE)
-            self.camera_view.set_custom_label("Lùi ra xa một chút")
-            if should_diag_log:
-                self._last_diag_time = now
-                logger.info(f"[Scan] Khuôn mặt quá gần ({face_area_frac:.1%} > 55%)")
-            return
-        elif not in_ellipse:
-            self.camera_view.set_face_state(FACE_STATE_OFFCENTER)
-            self.camera_view.set_custom_label("Căn chỉnh khuôn mặt vào giữa khung")
-            if should_diag_log:
-                self._last_diag_time = now
-                logger.info(f"[Scan] Khuôn mặt lệch tâm (dist_sq={dx*dx+dy*dy:.2f} > 1.35)")
+                logger.info(f"[Scan] {state_msg} (state={state})")
             return
 
         # Kiểm tra chất lượng ánh sáng và độ sắc nét
@@ -343,31 +342,14 @@ class RegistrationPage(QWidget):
             return
 
         face_row = max(faces, key=lambda f: f[2] * f[3])
-        fx, fy, fw, fh = int(face_row[0]), int(face_row[1]), int(face_row[2]), int(face_row[3])
         fh_frame, fw_frame = frame.shape[:2]
 
-        face_cx = (fx + fw / 2) / fw_frame
-        face_cy = (fy + fh / 2) / fh_frame
-        face_area_frac = (fw * fh) / (fw_frame * fh_frame)
-
-        rx_norm = 0.29   # 0.58 / 2
-        ry_norm = 0.35   # 0.70 / 2
-        dx = (face_cx - 0.5) / rx_norm
-        dy = (face_cy - 0.5) / ry_norm
-        in_ellipse = (dx * dx + dy * dy) <= 1.35
-
-        if face_area_frac < 0.05:
-            self.camera_view.set_face_state(FACE_STATE_TOO_FAR)
-            self.camera_view.set_custom_label("Đưa khuôn mặt lại gần hơn")
-        elif face_area_frac > 0.55:
-            self.camera_view.set_face_state(FACE_STATE_TOO_CLOSE)
-            self.camera_view.set_custom_label("Lùi ra xa một chút")
-        elif not in_ellipse:
-            self.camera_view.set_face_state(FACE_STATE_OFFCENTER)
-            self.camera_view.set_custom_label("Căn chỉnh khuôn mặt vào giữa khung")
-        else:
-            self.camera_view.set_face_state(FACE_STATE_READY)
+        state, state_msg = self.camera_view.evaluate_face_geometry(face_row, fw_frame, fh_frame)
+        self.camera_view.set_face_state(state)
+        if state == FACE_STATE_READY:
             self.camera_view.set_custom_label("Đã căn chỉnh khuôn mặt ✓ (Sẵn sàng quét)")
+        else:
+            self.camera_view.set_custom_label(state_msg)
 
     def update_frame(self, frame: np.ndarray):
         """Cập nhật frame camera liên tục từ CameraService."""
@@ -404,6 +386,8 @@ class RegistrationPage(QWidget):
 
         if success:
             self._show_status(self.scan_status_label, msg, "success")
+            self.camera_view.set_face_state(FACE_STATE_SUCCESS)
+            self.camera_view.set_custom_label("Đăng ký thành công ✓")
             self.btn_save.setEnabled(False)
             self._captured_embeddings = []
             self.progress_bar.setValue(0)

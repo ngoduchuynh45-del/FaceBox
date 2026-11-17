@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120">
+  <!-- Camera body -->
+  <rect x="15" y="30" width="130" height="78" rx="12" fill="#17365D" stroke="#0B1D33" stroke-width="2.5"/>
+  <!-- Viewfinder bump -->
+  <rect x="55" y="16" width="36" height="18" rx="6" fill="#17365D" stroke="#0B1D33" stroke-width="2.5"/>
+  <!-- Shutter button -->
+  <circle cx="130" cy="30" r="6" fill="#D1DBE8" stroke="#0B1D33" stroke-width="1.5"/>
+  <!-- Lens outer ring -->
+  <circle cx="80" cy="69" r="28" fill="none" stroke="#0B1D33" stroke-width="3"/>
+  <!-- Lens inner -->
+  <circle cx="80" cy="69" r="22" fill="#0B1D33"/>
+  <!-- FBH text centered in lens -->
+  <text x="80" y="75" text-anchor="middle" fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" letter-spacing="1.5">FBH</text>
+</svg>
+

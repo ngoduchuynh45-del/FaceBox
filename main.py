@@ -1,104 +1,167 @@
 """
-FaceBox - Điểm khởi đầu ứng dụng
-Nhận diện khuôn mặt qua webcam laptop.
-
-Cách chạy:
-    python main.py
-
-Yêu cầu:
-    pip install PySide6 opencv-python numpy scikit-learn
-
-Tác giả: FaceBox Team
-Phiên bản: 1.0 (Prototype)
+FaceBox — Điểm khởi đầu ứng dụng Windows
+Hệ thống tủ thông minh nhận diện khuôn mặt 24/7.
+Hỗ trợ cả chế độ chạy mã nguồn Python và chế độ đóng gói FaceBox.exe độc lập.
 """
 
 import sys
 import os
 import logging
+import traceback
 from datetime import datetime
 
-# Thêm thư mục gốc vào Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Thêm thư mục gốc vào Python path khi chạy dev
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if _BASE_DIR not in sys.path:
+    sys.path.insert(0, _BASE_DIR)
 
-from PySide6.QtWidgets import QApplication, QSplashScreen, QLabel
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QPixmap, QColor
+from PySide6.QtWidgets import QApplication, QSplashScreen, QMessageBox
+from PySide6.QtCore import Qt, QTimer, QSharedMemory
+from PySide6.QtGui import QFont, QPixmap, QColor, QIcon, QPainter, QBrush, QPen
+
+from services.path_service import get_resource_path, get_log_dir, is_frozen
 
 
 def setup_logging():
-    """Cài đặt logging - ghi vào file và console."""
-    log_dir = os.path.join(os.path.dirname(__file__), 'logs')
-    os.makedirs(log_dir, exist_ok=True)
-    
-    log_file = os.path.join(log_dir, f"facebox_{datetime.now().strftime('%Y%m%d')}.log")
-    
+    """Cài đặt logging ghi vào file và console."""
+    log_dir = get_log_dir()
+    log_file = log_dir / f"facebox_{datetime.now().strftime('%Y%m%d')}.log"
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
         handlers=[
-            logging.FileHandler(log_file, encoding='utf-8'),
+            logging.FileHandler(str(log_file), encoding='utf-8'),
             logging.StreamHandler(sys.stdout)
         ]
     )
-    return logging.getLogger(__name__)
+    return logging.getLogger("facebox")
 
 
-def create_splash_screen(app: QApplication) -> QSplashScreen:
-    """Tạo màn hình splash đơn giản."""
-    pixmap = QPixmap(500, 300)
-    pixmap.fill(QColor("#0f1117"))
-    
-    splash = QSplashScreen(pixmap, Qt.WindowStaysOnTopHint)
-    splash.showMessage(
-        "FaceBox\nĐang khởi động...",
-        Qt.AlignCenter | Qt.AlignBottom,
-        QColor("#6366f1")
-    )
-    
+def create_splash_screen() -> QSplashScreen:
+    """Tạo màn hình splash phong cách Industrial Smart Locker (Vàng / Đen)."""
+    pixmap = QPixmap(520, 320)
+    pixmap.fill(QColor("#171717"))
+
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+
+    # Viền vàng công nghiệp
+    painter.setPen(QPen(QColor("#FFD500"), 3))
+    painter.drawRect(2, 2, 516, 316)
+
+    # Thân logo icon mini
+    icon_path = get_resource_path(os.path.join("assets", "FaceBox.png"))
+    if icon_path.exists():
+        logo_pix = QPixmap(str(icon_path)).scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        painter.drawPixmap(220, 50, logo_pix)
+
+    # Chữ FaceBox
+    painter.setFont(QFont("Segoe UI", 26, QFont.Bold))
+    painter.setPen(QColor("#FFFFFF"))
+    painter.drawText(0, 175, 520, 40, Qt.AlignCenter, "FaceBox")
+
+    # Nhãn Smart Locker
+    painter.setFont(QFont("Segoe UI", 12, QFont.Bold))
+    painter.setPen(QColor("#FFD500"))
+    painter.drawText(0, 215, 520, 30, Qt.AlignCenter, "INDUSTRIAL SMART LOCKER")
+
+    # Dòng khởi động
+    painter.setFont(QFont("Segoe UI", 10))
+    painter.setPen(QColor("#A0A0A0"))
+    painter.drawText(0, 265, 520, 25, Qt.AlignCenter, "Đang khởi tạo hệ thống và tải mô hình AI...")
+
+    painter.end()
+
+    splash = QSplashScreen(pixmap, Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
     return splash
 
 
+def setup_exception_hook(logger):
+    """Bắt các exception chưa được xử lý để ghi log và hiển thị thông báo lỗi."""
+    def handle_exception(exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        err_msg = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        logger.critical(f"Ngoại lệ chưa được xử lý (Fatal Unhandled Exception):\n{err_msg}")
+        try:
+            QMessageBox.critical(
+                None,
+                "FaceBox — Lỗi Hệ Thống",
+                f"Đã xảy ra lỗi nghiêm trọng:\n{exc_value}\n\n"
+                f"Vui lòng xem chi tiết trong file log tại:\n{get_log_dir()}"
+            )
+        except Exception:
+            pass
+
+    sys.excepthook = handle_exception
+
+
 def main():
-    """Hàm khởi động chính."""
+    """Điểm khởi động chính của ứng dụng FaceBox."""
     logger = setup_logging()
-    logger.info("=" * 50)
-    logger.info("FaceBox v1.0 - Đang khởi động")
+    logger.info("=" * 60)
+    logger.info(f"FaceBox v1.2.1 — Khởi chạy (Frozen={is_frozen()})")
     logger.info(f"Python: {sys.version}")
-    logger.info(f"Thư mục: {os.path.dirname(__file__)}")
-    logger.info("=" * 50)
-    
+    logger.info(f"App dir: {_BASE_DIR}")
+    logger.info("=" * 60)
+
     # Đặt biến môi trường cho Qt
     os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
-    
+
     app = QApplication(sys.argv)
     app.setApplicationName("FaceBox")
-    app.setApplicationVersion("1.0")
+    app.setApplicationDisplayName("FaceBox — Industrial Smart Locker")
+    app.setApplicationVersion("1.2.1")
     app.setOrganizationName("FaceBox")
-    
-    # Font mặc định
+
+    setup_exception_hook(logger)
+
+    # 1. Cơ chế Single-Instance Mutex (Ngăn chạy nhiều bản cùng lúc)
+    shared_mem = QSharedMemory("FaceBox_SingleInstance_Mutex_Memory")
+    if not shared_mem.create(1):
+        # Đã có một tiến trình FaceBox đang chạy
+        logger.warning("Đã phát hiện một tiến trình FaceBox đang hoạt động. Ngăn chặn mở cửa sổ trùng lặp.")
+        QMessageBox.information(
+            None,
+            "FaceBox",
+            "Ứng dụng FaceBox hiện đang chạy trên máy tính của bạn.\n"
+            "Vui lòng kiểm tra cửa sổ FaceBox trên thanh tác vụ (Taskbar)."
+        )
+        sys.exit(0)
+
+    # 2. Đặt Icon ứng dụng Windows
+    icon_ico = get_resource_path(os.path.join("assets", "FaceBox.ico"))
+    icon_png = get_resource_path(os.path.join("assets", "FaceBox.png"))
+    if icon_ico.exists():
+        app.setWindowIcon(QIcon(str(icon_ico)))
+    elif icon_png.exists():
+        app.setWindowIcon(QIcon(str(icon_png)))
+
+    # 3. Font mặc định toàn hệ thống
     font = QFont("Segoe UI", 10)
     app.setFont(font)
-    
-    # Splash screen
-    splash = create_splash_screen(app)
+
+    # 4. Hiển thị màn hình Splash
+    splash = create_splash_screen()
     splash.show()
     app.processEvents()
-    
-    # Import MainWindow sau splash để tránh delay
-    from ui.main_window import MainWindow
-    
-    # Tạo cửa sổ chính
-    window = MainWindow()
-    
-    # Đóng splash và hiện cửa sổ chính
-    QTimer.singleShot(1500, lambda: (splash.close(), window.show()))
-    
-    logger.info("Giao diện đã sẵn sàng")
-    
-    # Chạy event loop
+
+    # 5. Khởi tạo AppController (Giao diện Kiosk mặc định)
+    from ui.app_controller import AppController
+    window = AppController()
+
+    # Đóng splash sau 1.2s và hiện cửa sổ chính
+    QTimer.singleShot(1200, lambda: (splash.close(), window.show()))
+
+    logger.info("Giao diện Kiosk đã sẵn sàng hoạt động")
+
     exit_code = app.exec()
-    
-    logger.info(f"FaceBox đã đóng (exit code: {exit_code})")
+    logger.info(f"FaceBox đã đóng (Mã thoát: {exit_code})")
+
+    # Giải phóng vùng nhớ chia sẻ
+    shared_mem.detach()
     sys.exit(exit_code)
 
 

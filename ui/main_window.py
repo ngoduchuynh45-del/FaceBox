@@ -12,10 +12,15 @@ from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QFont, QIcon
 
 from ui.styles import MAIN_STYLE
+from ui.components import FaceBoxLogo
+from ui import theme
 from ui.dashboard_page import DashboardPage
 from ui.registration_page import RegistrationPage
 from ui.recognition_page import RecognitionPage
 from ui.accounts_page import AccountsPage
+from ui.admin.history_page import HistoryPage
+from ui.admin.locker_page import LockerPage
+from ui.admin.settings_page import SettingsPage
 
 from services.camera_service import CameraService
 from services.face_recognition_service import FaceRecognitionService
@@ -29,6 +34,9 @@ PAGE_DASHBOARD = 0
 PAGE_REGISTER  = 1
 PAGE_RECOGNIZE = 2
 PAGE_ACCOUNTS  = 3
+PAGE_HISTORY   = 4
+PAGE_LOCKERS   = 5
+PAGE_SETTINGS  = 6
 
 
 class ModelLoaderThread(QThread):
@@ -45,20 +53,23 @@ class ModelLoaderThread(QThread):
 
 
 class MainWindow(QMainWindow):
-    """Cửa sổ chính của FaceBox."""
+    """Cửa sổ chính của FaceBox (Admin Mode)."""
+
+    kiosk_requested = Signal()  # Phát khi người dùng bấm quay về Kiosk
     
-    def __init__(self):
+    def __init__(self, face_service=None, camera_service=None):
         super().__init__()
         self.setWindowTitle("FaceBox - Nhận Diện Khuôn Mặt")
         self.setMinimumSize(1100, 700)
         self.resize(1200, 750)
         
-        # Khởi tạo services
-        self.camera_service = CameraService()
-        self.face_service = FaceRecognitionService()
+        # Nhận hoặc khởi tạo services tập trung
+        self.camera_service = camera_service if camera_service is not None else CameraService.get_instance()
+        self.face_service = face_service if face_service is not None else FaceRecognitionService()
         
-        # Áp dụng stylesheet
-        self.setStyleSheet(MAIN_STYLE)
+        # Áp dụng stylesheet chuẩn từ theme
+        self.setStyleSheet(theme.stylesheet())
+        theme.theme_manager.theme_changed.connect(self._on_theme_changed)
         
         # Tạo giao diện
         self._setup_ui()
@@ -66,15 +77,23 @@ class MainWindow(QMainWindow):
         # Khởi tạo database
         self._init_database()
         
-        # Tải mô hình AI trong background
-        self._load_model()
+        # Tải mô hình AI trong background nếu chưa sẵn sàng
+        if not self.face_service.is_ready():
+            self._load_model()
+        else:
+            self._update_model_status_ui()
+        
+        # Cập nhật trạng thái hiển thị camera ban đầu
+        if self.camera_service.is_running():
+            self.sidebar_cam_btn.setText("⏹  Tắt Camera")
+            self.recognize_page.update_camera_status(True)
         
         # Timer cập nhật stats định kỳ
         self._stats_timer = QTimer()
         self._stats_timer.timeout.connect(self._update_dashboard_stats)
         self._stats_timer.start(2000)
         
-        logger.info("MainWindow đã khởi tạo")
+        logger.info("MainWindow đã khởi tạo với services tập trung")
     
     def _setup_ui(self):
         """Xây dựng layout chính."""
@@ -88,32 +107,25 @@ class MainWindow(QMainWindow):
         # ========== SIDEBAR ==========
         self.sidebar = QFrame()
         self.sidebar.setObjectName("sidebar")
-        self.sidebar.setFixedWidth(210)
+        self.sidebar.setFixedWidth(235)
         
         sidebar_layout = QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
         
-        # Logo
+        # Logo FaceBox Industrial Camera
         logo_widget = QWidget()
         logo_layout = QVBoxLayout(logo_widget)
-        logo_layout.setContentsMargins(16, 24, 16, 8)
+        logo_layout.setContentsMargins(14, 20, 14, 12)
         
-        logo = QLabel("FaceBox")
-        logo.setObjectName("sidebar_logo")
-        logo.setStyleSheet("font-size: 24px; font-weight: bold; color: #6366f1; letter-spacing: 1px;")
-        
-        logo_sub = QLabel("Nhận diện khuôn mặt")
-        logo_sub.setStyleSheet("color: #4a5568; font-size: 11px;")
-        
-        logo_layout.addWidget(logo)
-        logo_layout.addWidget(logo_sub)
+        self.sidebar_logo = FaceBoxLogo(size=36, show_text=True)
+        logo_layout.addWidget(self.sidebar_logo)
         sidebar_layout.addWidget(logo_widget)
         
         # Divider
         divider = QFrame()
         divider.setFixedHeight(1)
-        divider.setStyleSheet("background: #1e2635;")
+        divider.setStyleSheet("background: #2D2D2D;")
         sidebar_layout.addWidget(divider)
         sidebar_layout.addSpacing(8)
         
@@ -123,7 +135,10 @@ class MainWindow(QMainWindow):
             ("🏠  Tổng Quan",           PAGE_DASHBOARD),
             ("👤  Đăng Ký Khuôn Mặt",  PAGE_REGISTER),
             ("🔍  Nhận Diện Trực Tiếp", PAGE_RECOGNIZE),
-            ("⚙️  Quản Lý Tài Khoản",  PAGE_ACCOUNTS),
+            ("👥  Quản Lý Tài Khoản",  PAGE_ACCOUNTS),
+            ("📋  Lịch Sử Gửi/Nhận",   PAGE_HISTORY),
+            ("🗄️  Quản Lý Tủ",         PAGE_LOCKERS),
+            ("⚙️  Cài Đặt",            PAGE_SETTINGS),
         ]
         
         for text, page_idx in nav_items:
@@ -147,7 +162,7 @@ class MainWindow(QMainWindow):
         sidebar_layout.addWidget(self.sidebar_cam_btn)
         
         # Version
-        version_lbl = QLabel("v1.0  |  Prototype")
+        version_lbl = QLabel("v1.1  |  Prototype")
         version_lbl.setStyleSheet("color: #2d3748; font-size: 10px; padding: 12px 16px;")
         sidebar_layout.addWidget(version_lbl)
         
@@ -162,11 +177,17 @@ class MainWindow(QMainWindow):
         self.register_page = RegistrationPage(self.face_service, self.camera_service)
         self.recognize_page = RecognitionPage(self.face_service, self.camera_service)
         self.accounts_page = AccountsPage(self.face_service)
+        self.history_page = HistoryPage()
+        self.locker_page = LockerPage()
+        self.settings_page = SettingsPage(self.face_service, self.camera_service)
         
         self.stack.addWidget(self.dashboard_page)  # 0
         self.stack.addWidget(self.register_page)   # 1
         self.stack.addWidget(self.recognize_page)  # 2
         self.stack.addWidget(self.accounts_page)   # 3
+        self.stack.addWidget(self.history_page)    # 4
+        self.stack.addWidget(self.locker_page)     # 5
+        self.stack.addWidget(self.settings_page)   # 6
         
         main_layout.addWidget(self.stack)
         
@@ -174,8 +195,11 @@ class MainWindow(QMainWindow):
         self.dashboard_page.navigate_to_register.connect(lambda: self._navigate_to(PAGE_REGISTER))
         self.dashboard_page.navigate_to_recognize.connect(lambda: self._navigate_to(PAGE_RECOGNIZE))
         self.dashboard_page.navigate_to_accounts.connect(lambda: self._navigate_to(PAGE_ACCOUNTS))
+        self.dashboard_page.navigate_to_lockers.connect(lambda: self._navigate_to(PAGE_LOCKERS))
+        self.dashboard_page.navigate_to_history.connect(lambda: self._navigate_to(PAGE_HISTORY))
         self.dashboard_page.open_camera_requested.connect(self._toggle_camera)
         self.accounts_page.data_changed.connect(self._update_dashboard_stats)
+        self.settings_page.kiosk_requested.connect(self.kiosk_requested.emit)
         
         # Trang mặc định
         self._navigate_to(PAGE_DASHBOARD)
@@ -189,6 +213,12 @@ class MainWindow(QMainWindow):
             btn.setProperty("active", "true" if is_active else "false")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
+    def _on_theme_changed(self):
+        """Cập nhật giao diện khi người dùng đổi Light / Dark theme."""
+        self.setStyleSheet(theme.stylesheet())
+        if hasattr(self, "sidebar_logo"):
+            self.sidebar_logo.update_theme()
     
     def _init_database(self):
         """Khởi tạo database."""
@@ -202,6 +232,16 @@ class MainWindow(QMainWindow):
                 "Kiểm tra quyền ghi vào thư mục dự án."
             )
     
+    def _update_model_status_ui(self):
+        """Cập nhật trạng thái mô hình lên giao diện khi đã ready."""
+        try:
+            embeddings = db_manager.get_all_face_embeddings()
+            if hasattr(self, "recognize_page"):
+                self.recognize_page._update_status_display()
+                self.recognize_page.update_face_count(len(embeddings))
+        except Exception as e:
+            logger.debug(f"Update model status UI error: {e}")
+
     def _load_model(self):
         """Tải mô hình AI trong background thread."""
         self._model_thread = ModelLoaderThread(self.face_service)
@@ -277,8 +317,9 @@ class MainWindow(QMainWindow):
         try:
             acc_count = db_manager.get_total_accounts()
             face_count = db_manager.get_total_faces()
+            locker_stats = db_manager.get_locker_stats()
             cam_active = self.camera_service.is_running()
-            self.dashboard_page.update_stats(acc_count, face_count, cam_active)
+            self.dashboard_page.update_stats(acc_count, face_count, cam_active, locker_stats)
             self.recognize_page.update_face_count(face_count)
         except Exception as e:
             logger.error(f"Lỗi cập nhật stats: {e}")

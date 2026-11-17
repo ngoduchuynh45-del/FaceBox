@@ -50,9 +50,12 @@ logs/
 # FaceBox private data
 # ==============================
 data/
-database/
+*.db
+*.sqlite
+*.sqlite3
 temp_faces/
 captured_frames/
+scratch/
 
 # ==============================
 # IDE
@@ -78,3 +81,6 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 
+
+# Python cache
+__pycache__/

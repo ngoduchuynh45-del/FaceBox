@@ -1,11 +1,13 @@
 """
 FaceBox - Camera Service
-Quản lý webcam: mở/đóng, đọc frame, phát tín hiệu frame mới.
+Quản lý webcam tập trung: mở/đóng, đọc frame, phát tín hiệu frame mới.
 Chạy trong QThread riêng để không block giao diện.
+Hỗ trợ cơ chế đa người lắng nghe (multi-listener) và kiểm tra nguồn cấp frame thực tế.
 """
+import time
 import cv2
 import logging
-from PySide6.QtCore import QThread, Signal, QMutex, QMutexLocker
+from PySide6.QtCore import QObject, QThread, Signal, QMutex, QMutexLocker
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ class CameraThread(QThread):
         self._running = False
         self._cap = None
         self._mutex = QMutex()
+        self._last_frame_ts = 0.0
 
     def run(self):
         """Vòng lặp chính của thread camera."""
@@ -54,19 +57,25 @@ class CameraThread(QThread):
         
         self._running = True
         self.status_changed.emit(True)
-        logger.info("Camera đang chạy")
+        logger.info(f"Camera {self.camera_index} đang chạy")
 
         while self._running:
             ret, frame = self._cap.read()
-            if not ret:
+            if not ret or frame is None:
                 logger.warning("Không đọc được frame từ camera")
+                self.msleep(100)
                 continue
+
+            self._last_frame_ts = time.time()
             self.frame_ready.emit(frame)
             self.msleep(33)  # ~30 FPS
 
-        self._cap.release()
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+
         self.status_changed.emit(False)
-        logger.info("Camera đã dừng")
+        logger.info("Camera đã dừng và giải phóng an toàn")
 
     def stop(self):
         """Dừng thread camera."""
@@ -76,46 +85,61 @@ class CameraThread(QThread):
     def is_running(self) -> bool:
         return self._running
 
+    def has_active_feed(self, timeout_sec: float = 2.0) -> bool:
+        """Kiểm tra xem camera có đang thực sự nhận được frame trong khoảng timeout_sec không."""
+        return self._running and (time.time() - self._last_frame_ts <= timeout_sec)
 
-class CameraService:
+
+class CameraService(QObject):
     """
-    Service quản lý camera thread.
-    Cung cấp interface để start/stop camera và nhận frame.
+    Service quản lý camera thread tập trung.
+    Cung cấp interface để start/stop camera, phát frame và kiểm tra trạng thái thực tế.
     """
-    def __init__(self):
+    frame_ready = Signal(object)
+    status_changed = Signal(bool)
+    error_occurred = Signal(str)
+
+    _instance = None  # Singleton instance
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self._thread: CameraThread = None
         self._current_frame: np.ndarray = None
-        self._frame_callbacks = []
+
+    @classmethod
+    def get_instance(cls):
+        """Lấy singleton instance của CameraService để tránh khởi tạo nhiều lần."""
+        if cls._instance is None:
+            cls._instance = CameraService()
+        return cls._instance
 
     def start(self, camera_index: int = 0,
               on_frame=None, on_error=None, on_status=None):
         """
         Khởi động camera.
-        
-        Args:
-            camera_index: Index camera (mặc định 0 = webcam laptop)
-            on_frame: Callback nhận numpy array frame
-            on_error: Callback nhận thông báo lỗi
-            on_status: Callback nhận bool trạng thái
+        Nếu camera đã chạy, chỉ đăng ký thêm callback (nếu có).
         """
+        if on_frame:
+            self.frame_ready.connect(on_frame)
+        if on_error:
+            self.error_occurred.connect(on_error)
+        if on_status:
+            self.status_changed.connect(on_status)
+
         if self._thread and self._thread.is_running():
-            return  # Đã chạy rồi
+            logger.info("CameraService: Camera đã chạy sẵn, kết nối listener mới")
+            if on_status:
+                on_status(True)
+            return
 
         self._thread = CameraThread(camera_index)
-        
-        if on_frame:
-            self._thread.frame_ready.connect(on_frame)
-        if on_error:
-            self._thread.error_occurred.connect(on_error)
-        if on_status:
-            self._thread.status_changed.connect(on_status)
-        
-        # Lưu frame mới nhất
-        self._thread.frame_ready.connect(self._save_frame)
+        self._thread.frame_ready.connect(self._on_thread_frame)
+        self._thread.error_occurred.connect(self.error_occurred.emit)
+        self._thread.status_changed.connect(self.status_changed.emit)
         self._thread.start()
 
     def stop(self):
-        """Dừng camera."""
+        """Dừng camera an toàn."""
         if self._thread:
             self._thread.stop()
             self._thread = None
@@ -126,7 +150,14 @@ class CameraService:
         return self._current_frame
 
     def is_running(self) -> bool:
+        """Kiểm tra camera thread đang chạy."""
         return self._thread is not None and self._thread.is_running()
 
-    def _save_frame(self, frame: np.ndarray):
+    def has_active_feed(self) -> bool:
+        """Kiểm tra camera đang thực sự đọc được frame trong 2 giây gần nhất."""
+        return self._thread is not None and self._thread.has_active_feed()
+
+    def _on_thread_frame(self, frame: np.ndarray):
         self._current_frame = frame
+        self.frame_ready.emit(frame)
+

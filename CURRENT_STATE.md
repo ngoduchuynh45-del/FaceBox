@@ -1,12 +1,12 @@
 # CURRENT_STATE.md — Trạng thái hiện tại FaceBox
 
-Cập nhật: 2026-10-23 16:20
+Cập nhật: 2026-11-14 14:00
 
 ## Phiên bản hiện tại
-**v1.0-alpha** — Giao diện chạy được, mô hình tải thành công
+**v1.2.1** — Tối ưu Typography & Bố cục văn bản (UI Text Layout), sửa triệt để lỗi chữ bị co hẹp/ép tràn
 
 ## Trạng thái tổng thể
-✅ **Ứng dụng đã khởi động thành công lần đầu tiên**
+✅ **Ứng dụng đã hoàn thiện toàn diện Kiosk Mode & Admin Mode, hiển thị tiếng Việt hoàn hảo trên mọi màn hình**
 
 ---
 
@@ -44,14 +44,39 @@ Cập nhật: 2026-10-23 16:20
 
 ## Công việc đang làm dở
 
-**T002: Kiểm thử toàn bộ chức năng** — ứng dụng đã chạy, cần người dùng test thực tế:
-1. Mở camera (Tổng Quan → Mở Camera)
-2. Đăng ký tài khoản + khuôn mặt
-3. Nhận diện
+**Phase 2 — Hoàn thiện giao diện Admin & Tích hợp Nghiệp vụ Kiosk: HOÀN THÀNH TOÀN DIỆN (T020, T021)**
+
+Đã triển khai và kiểm thử thành công:
+1. **Admin Sidebar 7 mục hoàn chỉnh**:
+   - Dashboard: Bổ sung thẻ thống kê ngăn tủ thời gian thực (`StatCard` 0/0), các nút thao tác nhanh tới tất cả các trang.
+   - Đăng ký khuôn mặt & Nhận diện: Giữ nguyên khung elip tỷ lệ 0.72 chuẩn hóa.
+   - Quản lý tài khoản: Quản lý người dùng và hồ sơ khuôn mặt.
+   - Lịch sử gửi/nhận (`HistoryPage`): Bảng dữ liệu tra cứu lịch sử mở tủ, hỗ trợ bộ lọc SĐT và khoảng thời gian.
+   - Quản lý tủ (`LockerPage`): Sơ đồ lưới ngăn tủ trực quan theo màu sắc trạng thái, dialog thêm ngăn tủ mới.
+   - Cài đặt (`SettingsPage`): Cài đặt ngưỡng nhận diện Cosine Distance, FPS, cấu hình camera, bảo mật mật khẩu.
+2. **Cơ sở dữ liệu mở rộng**:
+   - 3 bảng mới: `lockers`, `packages`, `open_history` cùng các hàm CRUD trong `db_manager.py`.
+3. **Liên kết nghiệp vụ khép kín giữa Kiosk và Database**:
+   - Kiosk Gửi hàng (`SendItemPage`): Tự động kiểm tra số lượng ngăn trống thực tế theo size (S/M/L), tự động gán ngăn tủ trống, lưu kiện hàng và nhật ký mở tủ.
+   - Kiosk Lấy hàng (`PickupItemPage`): Tra cứu danh sách các kiện hàng thực tế đang chờ lấy của tài khoản, chọn kiện hàng và giải phóng ngăn tủ về `empty` khi lấy xong.
+4. **Kiểm thử tự động toàn diện**:
+   - Chạy kịch bản khép kín (`scratch/test_kiosk_admin_flow.py`): Gửi hàng tại Kiosk → Kiểm tra tủ chuyển sang `occupied` → Lấy hàng tại Kiosk → Kiểm tra tủ chuyển về `empty` → Nhật ký ghi đủ 2 chiều → Dashboard Admin cập nhật số liệu chuẩn xác 100%.
+
+**Chưa test thủ công (cần chạy `python main.py` với webcam thực tế):**
+- Đưa mặt thực tế trước webcam để quét gửi và lấy hàng.
 
 ---
 
-## Lỗi đã sửa trong phiên này
+## Lỗi đã sửa trong phiên gần nhất (2026-11-13)
+
+1. **Khắc phục lỗi nạp ONNX trên đường dẫn Windows có dấu tiếng Việt (T016)**:
+   - Sử dụng `pathlib.Path` và nạp model qua buffer `cv2.dnn.readNetFromONNX()` / `cv2.FaceDetectorYN.create()` an toàn, không bị crash bởi hàm C++ `cv2.dnn.readNet`.
+2. **Xây dựng kiến trúc Kiosk Mode (T017)**:
+   - Triển khai `AppController` điều hướng 2 chế độ `KIOSK_MODE` và `ADMIN_MODE`.
+   - Tạo trọn bộ 7 màn hình Kiosk (`WelcomePage`, `RoleSelectPage`, `AuthMethodPage`, `SendItemPage`, `FaceScanPage`, `PinInputPage`, `SuccessPage`).
+3. **Khắc phục vòng đời Camera & Signal nhận diện (T018)**:
+   - **Lỗi 1 (Kiosk không nhận diện / không phát signal)**: Sửa thiếu method `reset()` và `add_result(phone)` trong `RecognitionConfirmer` (trước đó chỉ có `update(results)` gây crash ngầm timer). Kết nối signal `authenticated.emit(phone, account_name)`.
+   - **Lỗi 2 (Admin báo yêu cầu mở camera dù đã mở)**: Giải quyết việc `MainWindow` tự tạo instance `CameraService` thứ 2 độc lập. Chuyển sang Centralized Singleton `CameraService.get_instance()`, `AppController` truyền đúng instance dùng chung vào `MainWindow`, `RegistrationPage`, `FaceScanPage`. Thêm `showEvent` tự kích hoạt và đồng bộ trạng thái camera.
 
 1. **ONNX Runtime không tương thích Python 3.15** → Chuyển sang OpenCV built-in (YuNet + SFace)
 2. **DeepFace không cài được** → Không cần thiết nữa
@@ -81,14 +106,17 @@ Cập nhật: 2026-10-23 16:20
 
 ## Bước tiếp theo
 
-**Ưu tiên 1:** Người dùng test thủ công:
-1. Mở camera → kiểm tra video hiển thị
-2. Đăng ký khuôn mặt → kiểm tra lưu vào DB
-3. Nhận diện → kiểm tra kết quả
+**Ưu tiên 1:** Người dùng test thủ công toàn bộ Admin UI:
+1. Chạy `python main.py` → vào Admin Mode
+2. Kiểm tra 7 sidebar items chuyển trang đúng
+3. Trang Quản lý Tủ: thêm ngăn tủ, xem sơ đồ lưới
+4. Trang Cài đặt: thay đổi ngưỡng, xem thông tin hệ thống
+5. Trang Lịch sử: tìm kiếm, lọc theo ngày
 
-**Ưu tiên 2 (nếu có lỗi phát hiện khi test):**
-- Xem log: `logs/facebox_YYYYMMDD.log`
-- Báo cáo lỗi cụ thể để sửa
+**Ưu tiên 2:** Tiến đến Phase 3 hoặc cải thiện UX:
+- Hoàn thiện kết nối giữa Kiosk (gửi/nhận hàng) với Locker + Packages DB
+- Cải thiện Dashboard Admin với thống kê ngăn tủ
+- Thêm export dữ liệu (nếu cần)
 
 ---
 

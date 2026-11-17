@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QColor, QFont
 from database import db_manager
 from ui.widgets import SectionTitle
+from ui import theme
 
 
 class AccountsPage(QWidget):
@@ -33,7 +34,7 @@ class AccountsPage(QWidget):
         # Header
         header = QHBoxLayout()
         title = QLabel("Quản Lý Tài Khoản")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #e2e8f0;")
+        title.setStyleSheet("font-size: 20px; font-weight: 800; letter-spacing: 0.5px;")
         header.addWidget(title)
         header.addStretch()
         
@@ -68,8 +69,8 @@ class AccountsPage(QWidget):
         self.account_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.account_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
         self.account_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
-        self.account_table.setColumnWidth(1, 90)
-        self.account_table.setColumnWidth(2, 110)
+        self.account_table.setColumnWidth(1, 100)
+        self.account_table.setColumnWidth(2, 120)
         self.account_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.account_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.account_table.setAlternatingRowColors(True)
@@ -80,6 +81,8 @@ class AccountsPage(QWidget):
         # Nút xóa tài khoản
         btn_delete_account = QPushButton("🗑️  Xóa tài khoản đã chọn")
         btn_delete_account.setObjectName("btn_danger")
+        btn_delete_account.setFixedHeight(38)
+        btn_delete_account.setCursor(Qt.PointingHandCursor)
         btn_delete_account.clicked.connect(self._delete_selected_account)
         left_layout.addWidget(btn_delete_account)
         
@@ -94,37 +97,47 @@ class AccountsPage(QWidget):
         right_layout.addWidget(right_title)
         
         self.account_info_label = QLabel("← Chọn một tài khoản để xem chi tiết")
-        self.account_info_label.setStyleSheet("color: #4a5568; font-size: 13px; padding: 8px;")
+        self.account_info_label.setStyleSheet(f"color: {theme.colors().text_secondary}; font-size: 13px; font-weight: 600; padding: 6px 0;")
         right_layout.addWidget(self.account_info_label)
         
         self.face_list = QListWidget()
         self.face_list.setStyleSheet("""
             QListWidget {
-                background-color: #161b27;
-                border: 1px solid #1e2635;
-                border-radius: 8px;
+                background-color: #252525;
+                border: 1px solid #3A3A3A;
+                border-radius: 2px;
             }
             QListWidget::item {
-                padding: 10px 14px;
-                border-bottom: 1px solid #1e2635;
-                color: #e2e8f0;
+                padding: 12px 14px;
+                border-bottom: 1px solid #3A3A3A;
+                color: #FFFFFF;
+                font-weight: 500;
             }
             QListWidget::item:selected {
-                background-color: #1e2d54;
+                background-color: #FFD500;
+                color: #171717;
+                font-weight: bold;
             }
-            QListWidget::item:hover {
-                background-color: #1a1f2e;
+            QListWidget::item:hover:!selected {
+                background-color: #323232;
             }
         """)
         right_layout.addWidget(self.face_list)
         
         face_btn_row = QHBoxLayout()
-        btn_delete_face = QPushButton("🗑️  Xóa khuôn mặt đã chọn")
+        face_btn_row.setSpacing(8)
+        btn_delete_face = QPushButton("🗑️  Xóa mẫu chọn")
         btn_delete_face.setObjectName("btn_danger")
+        btn_delete_face.setFixedHeight(36)
+        btn_delete_face.setCursor(Qt.PointingHandCursor)
+        btn_delete_face.setToolTip("Xóa mẫu khuôn mặt đang được chọn")
         btn_delete_face.clicked.connect(self._delete_selected_face)
         
-        btn_delete_all_faces = QPushButton("🗑️  Xóa tất cả khuôn mặt")
+        btn_delete_all_faces = QPushButton("🗑️  Xóa tất cả")
         btn_delete_all_faces.setObjectName("btn_danger")
+        btn_delete_all_faces.setFixedHeight(36)
+        btn_delete_all_faces.setCursor(Qt.PointingHandCursor)
+        btn_delete_all_faces.setToolTip("Xóa tất cả mẫu khuôn mặt của tài khoản này")
         btn_delete_all_faces.clicked.connect(self._delete_all_faces)
         
         face_btn_row.addWidget(btn_delete_face)
@@ -166,9 +179,9 @@ class AccountsPage(QWidget):
             face_item = QTableWidgetItem(str(face_count))
             face_item.setTextAlignment(Qt.AlignCenter)
             if face_count == 0:
-                face_item.setForeground(QColor("#f87171"))
+                face_item.setForeground(QColor("#D94848"))
             else:
-                face_item.setForeground(QColor("#34d399"))
+                face_item.setForeground(QColor("#16A36A"))
             
             created = acc.get('created_at', '')[:10] if acc.get('created_at') else ''
             date_item = QTableWidgetItem(created)
@@ -207,7 +220,7 @@ class AccountsPage(QWidget):
         
         if not profiles:
             item = QListWidgetItem("  (Chưa có khuôn mặt nào được đăng ký)")
-            item.setForeground(QColor("#4a5568"))
+            item.setForeground(QColor("#787878"))
             self.face_list.addItem(item)
             return
         

@@ -17,6 +17,8 @@ class DashboardPage(QWidget):
     navigate_to_register = Signal()
     navigate_to_recognize = Signal()
     navigate_to_accounts = Signal()
+    navigate_to_lockers = Signal()
+    navigate_to_history = Signal()
     open_camera_requested = Signal()
     
     def __init__(self, parent=None):
@@ -58,10 +60,12 @@ class DashboardPage(QWidget):
         
         self.account_card = StatCard("0", "Tài khoản đã đăng ký", "#818cf8")
         self.face_card = StatCard("0", "Khuôn mặt đã lưu", "#34d399")
+        self.locker_card = StatCard("0/0", "Ngăn tủ (Trống/Tổng)", "#38bdf8")
         self.status_card = StatCard("OFF", "Trạng thái Camera", "#fbbf24")
         
         stats_layout.addWidget(self.account_card)
         stats_layout.addWidget(self.face_card)
+        stats_layout.addWidget(self.locker_card)
         stats_layout.addWidget(self.status_card)
         
         layout.addLayout(stats_layout)
@@ -99,18 +103,36 @@ class DashboardPage(QWidget):
         )
         btn_recognize.clicked.connect(self.navigate_to_recognize)
         
-        # Nút quản lý
+        # Nút quản lý tài khoản
         btn_accounts = self._make_action_btn(
-            "⚙️  Quản Lý Tài Khoản",
+            "👥  Quản Lý Tài Khoản",
             "Xem và xóa tài khoản, khuôn mặt",
             "#1a0a1a", "#a78bfa"
         )
         btn_accounts.clicked.connect(self.navigate_to_accounts)
+
+        # Nút quản lý tủ
+        btn_lockers = self._make_action_btn(
+            "🗄️  Quản Lý Ngăn Tủ",
+            "Xem sơ đồ và thêm/sửa ngăn tủ",
+            "#082f49", "#38bdf8"
+        )
+        btn_lockers.clicked.connect(self.navigate_to_lockers)
+
+        # Nút lịch sử
+        btn_history = self._make_action_btn(
+            "📋  Lịch Sử Gửi/Nhận",
+            "Tra cứu nhật ký mở tủ và giao dịch",
+            "#2e1065", "#c084fc"
+        )
+        btn_history.clicked.connect(self.navigate_to_history)
         
         actions_grid.addWidget(self.btn_camera, 0, 0)
         actions_grid.addWidget(btn_register, 0, 1)
         actions_grid.addWidget(btn_recognize, 1, 0)
         actions_grid.addWidget(btn_accounts, 1, 1)
+        actions_grid.addWidget(btn_lockers, 2, 0)
+        actions_grid.addWidget(btn_history, 2, 1)
         
         layout.addLayout(actions_grid)
         
@@ -139,22 +161,22 @@ class DashboardPage(QWidget):
         layout.addWidget(notice)
         layout.addStretch()
     
-    def _make_action_btn(self, title: str, subtitle: str, bg_color: str, accent_color: str) -> QFrame:
-        """Tạo nút action card có thể click."""
+    def _make_action_btn(self, title: str, subtitle: str, bg_color: str, accent_color: str) -> QPushButton:
+        """Tạo nút action card phong cách industrial locker."""
         frame = QPushButton()
-        frame.setFixedHeight(90)
+        frame.setFixedHeight(84)
         frame.setCursor(Qt.PointingHandCursor)
         frame.setStyleSheet(f"""
             QPushButton {{
                 background-color: {bg_color};
-                border: 1px solid {accent_color}44;
-                border-radius: 12px;
+                border: 2px solid {accent_color};
+                border-radius: 2px;
                 text-align: left;
                 padding: 0;
             }}
             QPushButton:hover {{
-                background-color: {accent_color}22;
-                border-color: {accent_color}88;
+                background-color: {accent_color};
+                border-color: #FFD500;
             }}
         """)
         
@@ -174,17 +196,29 @@ class DashboardPage(QWidget):
         inner_layout.addWidget(title_lbl)
         inner_layout.addWidget(sub_lbl)
         
+        frame._title_lbl = title_lbl
+        frame._sub_lbl = sub_lbl
+        
         return frame
     
-    def update_stats(self, account_count: int, face_count: int, camera_active: bool):
+    def update_stats(self, account_count: int, face_count: int, camera_active: bool, locker_stats: dict = None):
         """Cập nhật thống kê."""
         self.account_card.update_value(str(account_count))
         self.face_card.update_value(str(face_count))
         self.status_card.update_value("ON" if camera_active else "OFF")
         
+        if locker_stats:
+            empty = locker_stats.get('empty', 0)
+            total = locker_stats.get('total', 0)
+            self.locker_card.update_value(f"{empty}/{total}")
+        
         if camera_active:
             self.camera_badge.set_active("● Camera đang hoạt động")
-            self.btn_camera.setText("📷  Tắt Camera")
+            if hasattr(self.btn_camera, "_title_lbl"):
+                self.btn_camera._title_lbl.setText("⏹  Tắt Camera")
+                self.btn_camera._sub_lbl.setText("Dừng phát video từ webcam")
         else:
             self.camera_badge.set_inactive("○ Camera chưa bật")
-            self.btn_camera.setText("📷  Mở Camera")
+            if hasattr(self.btn_camera, "_title_lbl"):
+                self.btn_camera._title_lbl.setText("📷  Mở Camera")
+                self.btn_camera._sub_lbl.setText("Bật webcam để bắt đầu")

@@ -10,6 +10,7 @@ from PySide6.QtGui import QFont
 import numpy as np
 
 from ui.widgets import EllipseCameraView, SectionTitle, StatusBadge
+from ui import theme
 from services.face_recognition_service import RecognitionConfirmer
 
 
@@ -54,31 +55,31 @@ class RecognitionPage(QWidget):
         
         # Title
         title = QLabel("Nhận Diện Trực Tiếp")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #e2e8f0;")
+        title.setStyleSheet("font-size: 20px; font-weight: 800; letter-spacing: 0.5px;")
         right.addWidget(title)
         
         sub = QLabel("Hệ thống tự động phân tích khuôn mặt qua webcam")
-        sub.setStyleSheet("color: #64748b; font-size: 12px;")
+        sub.setStyleSheet(f"color: {theme.colors().text_muted}; font-size: 13px;")
         right.addWidget(sub)
-        right.addSpacing(8)
+        right.addSpacing(6)
         
         # --- Kết quả nhận diện ---
         result_frame = QFrame()
         result_frame.setObjectName("card_highlight")
         result_layout = QVBoxLayout(result_frame)
         
-        r_title = QLabel("Kết quả nhận diện")
-        r_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #64748b;")
+        r_title = QLabel("KẾT QUẢ NHẬN DIỆN")
+        r_title.setStyleSheet("font-size: 12px; font-weight: 800; letter-spacing: 0.8px; color: #FFD500;")
         result_layout.addWidget(r_title)
         
         self.result_main = QLabel("Chờ nhận diện...")
         self.result_main.setWordWrap(True)
-        self.result_main.setStyleSheet("font-size: 18px; font-weight: bold; color: #818cf8; padding: 8px 0;")
+        self.result_main.setStyleSheet("font-size: 18px; font-weight: 800; color: #CCCCCC; padding: 6px 0;")
         result_layout.addWidget(self.result_main)
         
         self.result_sub = QLabel("")
         self.result_sub.setWordWrap(True)
-        self.result_sub.setStyleSheet("font-size: 12px; color: #64748b;")
+        self.result_sub.setStyleSheet(f"font-size: 12px; color: {theme.colors().text_secondary};")
         result_layout.addWidget(self.result_sub)
         
         right.addWidget(result_frame)
@@ -88,8 +89,8 @@ class RecognitionPage(QWidget):
         ctrl_frame.setObjectName("card")
         ctrl_layout = QVBoxLayout(ctrl_frame)
         
-        c_title = QLabel("Cài đặt")
-        c_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #64748b;")
+        c_title = QLabel("CÀI ĐẶT NHẬN DIỆN")
+        c_title.setStyleSheet("font-size: 12px; font-weight: 800; letter-spacing: 0.8px; color: #FFD500;")
         ctrl_layout.addWidget(c_title)
         
         # Ngưỡng nhận diện (Cosine Similarity)
@@ -110,7 +111,7 @@ class RecognitionPage(QWidget):
         ctrl_layout.addLayout(thresh_row)
         
         thresh_hint = QLabel("Cosine Similarity: Càng cao càng giống (chuẩn OpenCV: >= 0.363)")
-        thresh_hint.setStyleSheet("color: #4a5568; font-size: 11px;")
+        thresh_hint.setStyleSheet(f"color: {theme.colors().text_muted}; font-size: 11px;")
         ctrl_layout.addWidget(thresh_hint)
         
         # Nút bật/tắt nhận diện
@@ -126,29 +127,32 @@ class RecognitionPage(QWidget):
         status_frame.setObjectName("card")
         status_layout = QVBoxLayout(status_frame)
         
-        st_title = QLabel("Trạng thái")
-        st_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #64748b;")
+        st_title = QLabel("TRẠNG THÁI HỆ THỐNG")
+        st_title.setStyleSheet("font-size: 12px; font-weight: 800; letter-spacing: 0.8px; color: #FFD500;")
         status_layout.addWidget(st_title)
         
         self.camera_status = StatusBadge()
         status_layout.addWidget(self.camera_status)
         
         self.model_status = QLabel("Mô hình: Đang kiểm tra...")
-        self.model_status.setStyleSheet("color: #64748b; font-size: 12px;")
+        self.model_status.setStyleSheet(f"color: {theme.colors().text_secondary}; font-size: 12px; font-weight: 600;")
         status_layout.addWidget(self.model_status)
         
         self.face_count_label = QLabel("Khuôn mặt trong DB: --")
-        self.face_count_label.setStyleSheet("color: #64748b; font-size: 12px;")
+        self.face_count_label.setStyleSheet(f"color: {theme.colors().text_secondary}; font-size: 12px; font-weight: 600;")
         status_layout.addWidget(self.face_count_label)
         
         right.addWidget(status_frame)
         
-        # Cảnh báo
+        # Cảnh báo phong cách công nghiệp
         warn = QLabel(
-            "⚠️ Prototype: Ảnh hoặc video có thể đánh lừa hệ thống.\n"
-            "Không dùng để kiểm soát an ninh thực tế."
+            "⚠️ Prototype: Hình ảnh/video có thể vượt qua nhận diện 2D.\n"
+            "Chưa tích hợp cảm biến chống giả mạo (Liveness Detection)."
         )
-        warn.setStyleSheet("color: #4a5568; font-size: 11px; padding: 8px;")
+        warn.setStyleSheet(
+            "color: #FFD500; background-color: #3A3005; border: 1px solid #FFD500; "
+            "border-radius: 2px; padding: 10px; font-size: 11px; font-weight: 600;"
+        )
         warn.setWordWrap(True)
         right.addWidget(warn)
         right.addStretch()
@@ -193,37 +197,36 @@ class RecognitionPage(QWidget):
         self.camera_view.display_frame_with_boxes(frame, self._last_results)
     
     def _update_result_panel(self, results: list):
-        """Cập nhật panel kết quả."""
+        """Cập nhật panel kết quả theo phong cách công nghiệp."""
         if not results:
             self.result_main.setText("Không phát hiện khuôn mặt")
-            self.result_main.setStyleSheet("font-size: 18px; color: #4a5568; padding: 8px 0;")
-            self.result_sub.setText("Hãy đứng trước camera")
+            self.result_main.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {theme.colors().text_muted}; padding: 6px 0;")
+            self.result_sub.setText("Đứng trước khung camera để bắt đầu nhận diện")
             return
         
         # Tìm kết quả nhận diện được
         identified = [r for r in results if r.get("identified")]
-        unknown = [r for r in results if not r.get("identified")]
         
         if identified:
             phones = list(set(r["phone_number"] for r in identified))
             self.result_main.setText("✅ " + " | ".join(phones))
-            self.result_main.setStyleSheet("font-size: 16px; font-weight: bold; color: #34d399; padding: 8px 0;")
+            self.result_main.setStyleSheet("font-size: 18px; font-weight: 800; color: #16A36A; padding: 6px 0;")
             score = identified[0].get("score", 0.0)
             sim = identified[0].get("similarity", 0.0)
             thresh = self.threshold_spin.value()
-            self.result_sub.setText(f"Độ tin cậy: {score:.0%} | Cosine: {sim:.3f} (ngưỡng: {thresh:.3f}) | Phát hiện {len(results)} khuôn mặt")
+            self.result_sub.setText(f"Độ khớp: {score:.0%} | Cosine: {sim:.3f} (ngưỡng: {thresh:.3f}) | Phát hiện {len(results)} khuôn mặt")
         else:
             self.result_main.setText("❓ Chưa xác định được tài khoản")
-            self.result_main.setStyleSheet("font-size: 16px; font-weight: bold; color: #f87171; padding: 8px 0;")
+            self.result_main.setStyleSheet("font-size: 16px; font-weight: 800; color: #D94848; padding: 6px 0;")
             sim = results[0].get("similarity", -1.0) if results else -1.0
             thresh = self.threshold_spin.value()
             if sim > -1.0:
                 self.result_sub.setText(
-                    f"Phát hiện {len(results)} khuôn mặt nhưng không khớp dữ liệu đã đăng ký.\n"
+                    f"Khuôn mặt chưa trùng khớp với dữ liệu đăng ký.\n"
                     f"Cosine cao nhất: {sim:.3f} (yêu cầu ngưỡng >= {thresh:.3f})"
                 )
             else:
-                self.result_sub.setText("Không có dữ liệu khuôn mặt trong cơ sở dữ liệu để so khớp.")
+                self.result_sub.setText("Chưa có hồ sơ khuôn mặt nào trong cơ sở dữ liệu để so khớp.")
     
     def _toggle_recognition(self):
         """Bật/tắt nhận diện."""
@@ -234,8 +237,8 @@ class RecognitionPage(QWidget):
         else:
             self.btn_toggle.setText("▶  Tiếp tục nhận diện")
             self._recognition_timer.stop()
-            self.result_main.setText("⏸ Đã tạm dừng")
-            self.result_main.setStyleSheet("font-size: 18px; color: #4a5568; padding: 8px 0;")
+            self.result_main.setText("⏸ Đã tạm dừng nhận diện")
+            self.result_main.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {theme.colors().text_muted}; padding: 6px 0;")
     
     def _update_threshold(self, value: float):
         """Cập nhật ngưỡng nhận diện."""

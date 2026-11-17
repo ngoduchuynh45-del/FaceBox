@@ -1,12 +1,12 @@
 # TASKS.md — Danh sách công việc FaceBox
 
-Cập nhật: 2026-10-23 16:20
+Cập nhật: 2026-11-13 15:43
 
 ## Đang thực hiện (IN_PROGRESS)
 
 | ID | Mô tả | Ghi chú |
 |----|-------|---------|
-| T002 | Kiểm thử toàn bộ chức năng sau khi app chạy được | Cần test thủ công |
+| — | Không có task nào đang thực hiện | — |
 
 ## Chưa bắt đầu (TODO)
 
@@ -50,6 +50,19 @@ Cập nhật: 2026-10-23 16:20
 | T002a | Chạy app lần đầu thành công - model tải OK | 2026-10-23 |
 | T014 | Thu nhỏ elip camera (58%x70%) và phủ ở cả Đăng Ký & Nhận Diện | 2026-10-27 |
 | T014b | Khôi phục luồng quét tự nhiên T014: xóa bỏ hoàn toàn quy trình 5 bước tư thế | 2026-10-28 |
+| T015 | Tạo file Word Báo cáo Kỹ thuật & Hướng dẫn FaceBox (FaceBox_Bao_Cao_Du_An.docx) | 2026-11-07 |
+| T016 | Debug và chuẩn hóa nạp model YuNet/SFace qua pathlib + buffer (chống lỗi OpenCV Unicode path) | 2026-11-13 |
+| T017 | Phase 1: Xây dựng Design System, Kiosk Mode 7 màn hình, AppController chuyển Kiosk ↔ Admin | 2026-11-13 |
+| T018 | Khắc phục vòng đời Camera & Tín hiệu nhận diện Kiosk/Admin (Centralized Camera Manager & Confirmer API) | 2026-11-13 |
+| T019 | Bổ sung Phase 2: Chuẩn hóa khung elip nhận diện khuôn mặt (bảo toàn tỷ lệ 0.72 bất biến, căn giữa camera, 6 trạng thái màu, đồng bộ hình học) | 2026-11-13 |
+| T020 | Phase 2: Mở rộng Admin UI — Sidebar 7 mục, DB schema mới (lockers/packages/open_history), 3 trang mới (Lịch sử, Quản lý Tủ, Cài đặt) | 2026-11-13 |
+| T021 | Phase 2: Tích hợp nghiệp vụ Kiosk ↔ Locker/Packages DB (Gửi hàng gán tủ, Lấy hàng giải phóng tủ, Dashboard thống kê ngăn tủ) | 2026-11-13 |
+| T022 | Redesign toàn diện UI theo phong cách Industrial Smart Locker (InPost Poland / Locker & Lock): Bảng màu Vàng #FFD500 / Đen #171717, hình khối vuông vức 0-2px, Logo Camera phẳng + Hộp kiện hàng, hỗ trợ Light/Dark Theme đồng bộ cho cả Kiosk và Admin | 2026-11-13 |
+| T023 | Tối ưu Typography & Bố cục văn bản (UI Text Layout): Sửa lỗi chữ bị ép/cắt ở nút 'Quay về Kiosk', mở rộng sidebar 235px, nâng cấp hộp thoại AdminLoginDialog (450x590px), chuẩn hóa font Segoe UI hỗ trợ tiếng Việt hoàn hảo, tối ưu các nhãn, nút xóa và bảng dữ liệu | 2026-11-14 |
+| T024 | Phase 1 Đóng gói: Tạo path_service, cập nhật face_recognition_service + db_manager, tạo FaceBox.ico, cập nhật main.py (mutex, splash, error handler), tạo FaceBox.spec, build PyInstaller onedir thành công (FaceBox.exe ~6.15MB) | 2026-11-14 |
+| T024b | Phase 1 Đóng gói - Hoàn thiện: Copy facebox.db sang dist/FaceBox/data/, tạo FaceBox.vbs launcher trên Desktop (không hiện CMD), cập nhật VERSIONS.md → v1.3.0 | 2026-11-14 |
+| T024c | Fix launcher VBS: Junction C:\FaceBoxApp → dist\FaceBox (tránh Unicode), viết VBS ASCII-only, xác minh FaceBox.exe chạy OK (217 MB RAM, AI + Camera + DB đều hoạt động) | 2026-11-14 |
+| T025 | Kiểm thử FaceBox.exe tự động: khởi động OK, YuNet+SFace nạp qua binary buffer, DB kết nối 2 tài khoản/1 embedding, Camera 0 hoạt động, Responding=True | 2026-11-14 |
 
 ## Bị chặn (BLOCKED)
 
